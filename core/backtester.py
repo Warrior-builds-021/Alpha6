@@ -34,16 +34,25 @@ class StockBacktester:
             bm = yf.Ticker(self.benchmark_symbol)
             bm_df = bm.history(period=period)
 
-            if stock_df.empty or bm_df.empty:
-                return None
+            # Align timestamps across different exchange timezones (e.g. NSE Asia/Kolkata vs US America/New_York)
+            stock_series = stock_df["Close"].dropna()
+            bm_series = bm_df["Close"].dropna()
 
-            # Align timestamps
-            df = pd.DataFrame()
-            df["Stock_Close"] = stock_df["Close"]
-            df["Benchmark_Close"] = bm_df["Close"]
-            df = df.dropna()
+            # Strip timezones and normalize to date
+            stock_series.index = pd.to_datetime(stock_series.index).tz_localize(None).normalize()
+            bm_series.index = pd.to_datetime(bm_series.index).tz_localize(None).normalize()
 
-            if len(df) < 20:
+            # Remove duplicate calendar dates if any
+            stock_series = stock_series[~stock_series.index.duplicated(keep='last')]
+            bm_series = bm_series[~bm_series.index.duplicated(keep='last')]
+
+            # Create aligned DataFrame
+            df = pd.DataFrame({
+                "Stock_Close": stock_series,
+                "Benchmark_Close": bm_series
+            }).ffill().dropna()
+
+            if len(df) < 15:
                 return None
 
             # Daily Returns

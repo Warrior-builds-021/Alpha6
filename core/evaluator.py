@@ -23,6 +23,32 @@ class PillarEvaluator:
         self.symbol = stock_data.get("symbol", "")
         self.is_financial = any(term in self.data.get("sector", "").lower() for term in ["bank", "financial", "insurance", "nbfc"])
 
+    @staticmethod
+    def _normalize_pct(val: Any) -> Optional[float]:
+        """Ensures percentages and decimals are consistently returned as decimals (0.15 for 15%)."""
+        if val is None:
+            return None
+        try:
+            v = float(val)
+            if np.isnan(v):
+                return None
+            if abs(v) > 2.0:  # e.g. 15.5 for 15.5% or 45.0 for 45%
+                return v / 100.0
+            return v
+        except (ValueError, TypeError):
+            return None
+
+    @staticmethod
+    def _safe_float(val: Any) -> Optional[float]:
+        """Safely parses float with NaN protection."""
+        if val is None:
+            return None
+        try:
+            v = float(val)
+            return None if np.isnan(v) else v
+        except (ValueError, TypeError):
+            return None
+
     def evaluate_all(self) -> Dict[str, Any]:
         """
         Executes evaluation of all 6 pillars, computes composite score, and detects red flags.
@@ -314,10 +340,10 @@ class PillarEvaluator:
     def _eval_pricing_power(self) -> Dict[str, Any]:
         score = 50.0
         details = []
-        gross_margin = self.info.get("grossMargins")
-        op_margin = self.info.get("operatingMargins")
-        roe = self.info.get("returnOnEquity")
-        roa = self.info.get("returnOnAssets")
+        gross_margin = self._normalize_pct(self.info.get("grossMargins"))
+        op_margin = self._normalize_pct(self.info.get("operatingMargins"))
+        roe = self._normalize_pct(self.info.get("returnOnEquity"))
+        roa = self._normalize_pct(self.info.get("returnOnAssets"))
 
         # Gross Margin (Indicator of pricing power)
         if gross_margin is not None:
@@ -356,8 +382,8 @@ class PillarEvaluator:
     def _eval_skin_in_game(self) -> Dict[str, Any]:
         score = 50.0
         details = []
-        insider_pct = self.info.get("heldPercentInsiders")
-        inst_pct = self.info.get("heldPercentInstitutions")
+        insider_pct = self._normalize_pct(self.info.get("heldPercentInsiders"))
+        inst_pct = self._normalize_pct(self.info.get("heldPercentInstitutions"))
 
         is_indian_stock = ".NS" in self.symbol or ".BO" in self.symbol
 
