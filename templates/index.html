@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ALPHA6 | Institutional Equity Intelligence Terminal</title>
+    <title>ALPHA6 | Institutional Equity Terminal</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -12,17 +12,11 @@
             theme: {
                 extend: {
                     colors: {
-                        brand: {
-                            50: '#f0f9ff',
-                            400: '#38bdf8',
-                            500: '#0ea5e9',
-                            600: '#0284c7',
-                        },
                         surface: {
-                            base: '#080C14',
-                            card: '#0F172A',
-                            border: '#1E293B',
-                            hover: '#1E293B'
+                            base: '#0A0A0A',
+                            card: '#121212',
+                            border: '#262626',
+                            hover: '#1A1A1A'
                         }
                     },
                     fontFamily: {
@@ -43,79 +37,68 @@
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <style>
         body {
-            background-color: #080C14;
-            color: #F1F5F9;
+            background-color: #0A0A0A;
+            color: #E5E5E5;
             font-family: 'Inter', sans-serif;
         }
-        /* Custom Scrollbar */
+        /* Custom Clean Scrollbar */
         ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+            width: 5px;
+            height: 5px;
         }
         ::-webkit-scrollbar-track {
-            background: #080C14;
+            background: #0A0A0A;
         }
         ::-webkit-scrollbar-thumb {
-            background: #1E293B;
-            border-radius: 3px;
+            background: #262626;
+            border-radius: 2px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #334155;
+            background: #404040;
         }
         .active-tab {
-            border-bottom: 2px solid #38BDF8;
-            color: #38BDF8 !important;
+            border-bottom: 2px solid #FFFFFF !important;
+            color: #FFFFFF !important;
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col bg-[#080C14] text-slate-100 antialiased selection:bg-sky-500 selection:text-white">
+<body class="min-h-screen flex flex-col bg-[#0A0A0A] text-neutral-200 antialiased selection:bg-neutral-700 selection:text-white">
 
-    <!-- TOP INSTITUTIONAL NAVBAR -->
-    <header class="border-b border-[#1E293B] bg-[#0A0F1D] sticky top-0 z-50 px-6 py-3.5">
+    <!-- MINIMALIST INSTITUTIONAL NAVBAR -->
+    <header class="border-b border-[#262626] bg-[#0A0A0A] sticky top-0 z-50 px-6 py-3">
         <div class="max-w-[1600px] mx-auto flex items-center justify-between">
-            <div class="flex items-center space-x-4">
-                <!-- Brand SVG Logo -->
-                <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-[#0F172A] border border-slate-700 shadow-sm">
-                    <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M18 7L28 12.8V24.2L18 30L8 24.2V12.8L18 7Z" stroke="#38BDF8" stroke-width="2.5" stroke-linejoin="round"/>
-                        <path d="M18 7V30M8 12.8L28 24.2M8 24.2L28 12.8" stroke="#38BDF8" stroke-width="1.5" stroke-opacity="0.4"/>
-                        <circle cx="18" cy="18.5" r="3.5" fill="#10B981"/>
-                    </svg>
-                </div>
-                <div>
-                    <div class="flex items-center space-x-2">
-                        <span class="text-xl font-extrabold tracking-tight text-white font-mono">ALPHA6</span>
-                        <span class="text-xs uppercase px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/30 font-mono font-semibold tracking-wider">Enterprise Terminal</span>
-                    </div>
-                    <p class="text-xs text-slate-400 font-medium">6-Pillar Fundamental Screener & Downside Protection Engine</p>
-                </div>
+            <div class="flex items-center space-x-3">
+                <span class="text-lg font-bold tracking-tight text-white font-mono">ALPHA6</span>
+                <span class="text-[11px] uppercase px-2 py-0.5 rounded bg-neutral-900 text-neutral-300 border border-neutral-700 font-mono font-medium tracking-wider">Terminal</span>
+                <span class="text-neutral-600">|</span>
+                <p class="text-xs text-neutral-400 font-normal hidden sm:inline">6-Pillar Fundamental & Solvency Model</p>
             </div>
 
-            <!-- Quick Global Search & System Status -->
-            <div class="flex items-center space-x-4">
-                <div class="relative">
-                    <input type="text" id="global-ticker-search" placeholder="Search Security (e.g. RELIANCE, NVDA)..." class="bg-[#0F172A] border border-slate-700 rounded-lg px-3.5 py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-400 w-72 font-mono" onkeydown="if(event.key==='Enter') executeAudit(this.value)">
-                    <button onclick="executeAudit(document.getElementById('global-ticker-search').value)" class="absolute right-2.5 top-2 text-slate-400 hover:text-white text-xs font-mono uppercase font-bold">Audit</button>
+            <!-- Fixed Clean Search Bar & System Status -->
+            <div class="flex items-center space-x-5">
+                <div class="flex items-center">
+                    <input type="text" id="global-ticker-search" placeholder="Search Security (e.g. RELIANCE, NVDA)..." class="bg-[#141414] border border-[#262626] rounded-l-md px-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-400 w-60 font-mono" onkeydown="if(event.key==='Enter') executeAudit(this.value)">
+                    <button onclick="executeAudit(document.getElementById('global-ticker-search').value)" class="bg-[#262626] hover:bg-[#333333] text-neutral-200 text-xs font-mono font-semibold px-3 py-1.5 rounded-r-md border border-l-0 border-[#262626] transition">Audit</button>
                 </div>
-                <div class="h-6 w-px bg-slate-800"></div>
-                <div class="flex items-center space-x-2 font-mono text-xs">
-                    <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span class="text-emerald-400 font-bold">ONLINE</span>
-                    <span class="text-slate-500">|</span>
-                    <span class="text-slate-400">THRESHOLD: <b class="text-white">78%</b></span>
+                <div class="h-4 w-px bg-neutral-800"></div>
+                <div class="flex items-center space-x-2 font-mono text-xs text-neutral-400">
+                    <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    <span class="text-neutral-300 font-medium">ONLINE</span>
+                    <span class="text-neutral-600">|</span>
+                    <span>THRESHOLD: <b class="text-white">78%</b></span>
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- NAVIGATION TABS -->
-    <div class="border-b border-[#1E293B] bg-[#0A0F1D]/60 px-6">
-        <div class="max-w-[1600px] mx-auto flex space-x-8 text-sm font-semibold">
-            <button onclick="switchTab('tab-screener')" id="nav-screener" class="py-3.5 text-slate-400 hover:text-white transition active-tab">Universe Screener</button>
-            <button onclick="switchTab('tab-audit')" id="nav-audit" class="py-3.5 text-slate-400 hover:text-white transition">Forensic 6-Pillar Audit</button>
-            <button onclick="switchTab('tab-chart')" id="nav-chart" class="py-3.5 text-slate-400 hover:text-white transition">TradingView Technicals</button>
-            <button onclick="switchTab('tab-backtest')" id="nav-backtest" class="py-3.5 text-slate-400 hover:text-white transition">Historical Backtester</button>
-            <button onclick="switchTab('tab-risk')" id="nav-risk" class="py-3.5 text-slate-400 hover:text-white transition">Position Sizing & Risk</button>
+    <!-- CLEAN TABS NAVIGATION -->
+    <div class="border-b border-[#262626] bg-[#0A0A0A] px-6">
+        <div class="max-w-[1600px] mx-auto flex space-x-8 text-xs font-medium">
+            <button onclick="switchTab('tab-screener')" id="nav-screener" class="py-3 text-neutral-400 hover:text-white transition active-tab">Universe Screener</button>
+            <button onclick="switchTab('tab-audit')" id="nav-audit" class="py-3 text-neutral-400 hover:text-white transition">Forensic 6-Pillar Audit</button>
+            <button onclick="switchTab('tab-chart')" id="nav-chart" class="py-3 text-neutral-400 hover:text-white transition">TradingView Technicals</button>
+            <button onclick="switchTab('tab-backtest')" id="nav-backtest" class="py-3 text-neutral-400 hover:text-white transition">Historical Backtester</button>
+            <button onclick="switchTab('tab-risk')" id="nav-risk" class="py-3 text-neutral-400 hover:text-white transition">Position Sizing & Risk</button>
         </div>
     </div>
 
@@ -123,12 +106,12 @@
     <main class="flex-1 max-w-[1600px] w-full mx-auto p-6 space-y-6">
 
         <!-- ==================== TAB 1: UNIVERSE SCREENER ==================== -->
-        <section id="tab-screener" class="space-y-6">
+        <section id="tab-screener" class="space-y-5">
             <!-- Controls Bar -->
-            <div class="bg-[#0F172A] border border-[#1E293B] rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
-                <div class="flex items-center space-x-4">
-                    <label class="text-xs uppercase font-bold text-slate-400 tracking-wider">Universe:</label>
-                    <select id="screener-universe" class="bg-[#080C14] border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-sky-400 font-medium">
+            <div class="bg-[#121212] border border-[#262626] rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <label class="text-xs uppercase font-medium text-neutral-400 font-mono">Universe:</label>
+                    <select id="screener-universe" class="bg-[#1A1A1A] border border-[#333333] rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-neutral-400 font-mono">
                         <option value="nifty50">Indian Nifty 50 (Blue-Chips)</option>
                         <option value="growth">Indian Quality Growth Leaders</option>
                         <option value="us">US Tech & Mega-Caps (S&P/Nasdaq)</option>
@@ -136,83 +119,83 @@
                     </select>
 
                     <div id="custom-tickers-wrapper" class="hidden">
-                        <input type="text" id="custom-tickers-input" placeholder="TCS.NS, NVDA, AAPL..." class="bg-[#080C14] border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-sky-400 font-mono w-60">
+                        <input type="text" id="custom-tickers-input" placeholder="TCS.NS, NVDA, AAPL..." class="bg-[#1A1A1A] border border-[#333333] rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-neutral-400 font-mono w-60">
                     </div>
                 </div>
 
                 <div class="flex items-center space-x-4">
                     <div class="flex items-center space-x-2">
-                        <label class="text-xs uppercase font-bold text-slate-400">Min Threshold:</label>
-                        <input type="number" id="screener-threshold" value="78" min="50" max="95" class="bg-[#080C14] border border-slate-700 rounded-lg px-2.5 py-1 text-sm text-white w-16 text-center font-mono font-bold">
-                        <span class="text-slate-400 text-xs">%</span>
+                        <label class="text-xs uppercase font-medium text-neutral-400 font-mono">Min Threshold:</label>
+                        <input type="number" id="screener-threshold" value="78" min="50" max="95" class="bg-[#1A1A1A] border border-[#333333] rounded px-2.5 py-1 text-xs text-white w-14 text-center font-mono font-bold">
+                        <span class="text-neutral-400 text-xs">%</span>
                     </div>
 
-                    <button onclick="runScreener()" id="btn-run-screener" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm px-5 py-2 rounded-lg shadow-sm transition flex items-center space-x-2">
-                        <span>Execute Screen</span>
+                    <button onclick="runScreener()" id="btn-run-screener" class="bg-white hover:bg-neutral-200 text-black font-medium text-xs px-4 py-1.5 rounded transition">
+                        Execute Screen
                     </button>
                 </div>
             </div>
 
-            <!-- KPI Cards -->
+            <!-- Monochrome KPI Cards -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4" id="screener-kpis">
-                <div class="bg-[#0F172A] border border-[#1E293B] rounded-xl p-4">
-                    <div class="text-xs uppercase font-bold text-slate-400 tracking-wider">Total Scanned</div>
-                    <div class="text-2xl font-black font-mono text-white mt-1" id="kpi-total">-</div>
-                    <div class="text-xs text-slate-500 mt-1 font-mono">Securities Analyzed</div>
+                <div class="bg-[#121212] border border-[#262626] rounded-lg p-4">
+                    <div class="text-[11px] uppercase font-mono text-neutral-400">Total Scanned</div>
+                    <div class="text-2xl font-bold font-mono text-white mt-1" id="kpi-total">-</div>
+                    <div class="text-[11px] text-neutral-500 mt-1 font-mono">Securities Analyzed</div>
                 </div>
-                <div class="bg-[#0F172A] border border-[#1E293B] rounded-xl p-4">
-                    <div class="text-xs uppercase font-bold text-slate-400 tracking-wider">High-Conviction Picks (≥78%)</div>
-                    <div class="text-2xl font-black font-mono text-emerald-400 mt-1" id="kpi-passed">-</div>
-                    <div class="text-xs text-emerald-500/80 mt-1 font-mono" id="kpi-pass-rate">-</div>
+                <div class="bg-[#121212] border border-[#262626] rounded-lg p-4">
+                    <div class="text-[11px] uppercase font-mono text-neutral-400">High-Conviction Picks (≥78%)</div>
+                    <div class="text-2xl font-bold font-mono text-white mt-1" id="kpi-passed">-</div>
+                    <div class="text-[11px] text-neutral-400 mt-1 font-mono" id="kpi-pass-rate">-</div>
                 </div>
-                <div class="bg-[#0F172A] border border-[#1E293B] rounded-xl p-4">
-                    <div class="text-xs uppercase font-bold text-slate-400 tracking-wider">Universe Avg Score</div>
-                    <div class="text-2xl font-black font-mono text-sky-400 mt-1" id="kpi-avg">-</div>
-                    <div class="text-xs text-slate-500 mt-1 font-mono">Composite Quality</div>
+                <div class="bg-[#121212] border border-[#262626] rounded-lg p-4">
+                    <div class="text-[11px] uppercase font-mono text-neutral-400">Universe Avg Score</div>
+                    <div class="text-2xl font-bold font-mono text-white mt-1" id="kpi-avg">-</div>
+                    <div class="text-[11px] text-neutral-500 mt-1 font-mono">Composite Quality</div>
                 </div>
-                <div class="bg-[#0F172A] border border-[#1E293B] rounded-xl p-4">
-                    <div class="text-xs uppercase font-bold text-slate-400 tracking-wider">Capital Risk Disqualified</div>
-                    <div class="text-2xl font-black font-mono text-rose-400 mt-1" id="kpi-risk">-</div>
-                    <div class="text-xs text-rose-500/80 mt-1 font-mono">Red Flags Detected</div>
+                <div class="bg-[#121212] border border-[#262626] rounded-lg p-4">
+                    <div class="text-[11px] uppercase font-mono text-neutral-400">Capital Risk Disqualified</div>
+                    <div class="text-2xl font-bold font-mono text-neutral-300 mt-1" id="kpi-risk">-</div>
+                    <div class="text-[11px] text-neutral-500 mt-1 font-mono">Red Flags Detected</div>
                 </div>
             </div>
 
             <!-- High Conviction Top Picks Cards -->
             <div id="top-picks-container" class="space-y-3">
-                <h3 class="text-base font-bold text-white uppercase tracking-wider font-mono">Top Investment-Grade Selections</h3>
+                <h3 class="text-xs font-semibold text-neutral-300 uppercase tracking-wider font-mono">Top Selections (Score ≥ 78%)</h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="top-picks-grid">
                     <!-- Populated dynamically -->
                 </div>
             </div>
 
             <!-- Full Ranking Data Table -->
-            <div class="bg-[#0F172A] border border-[#1E293B] rounded-xl overflow-hidden">
-                <div class="p-4 border-b border-[#1E293B] flex justify-between items-center">
-                    <h3 class="text-sm font-bold text-white uppercase tracking-wider font-mono">Complete Quantitative Ranking Matrix</h3>
-                    <div class="text-xs text-slate-400 font-mono">Click row to view deep forensic audit</div>
+            <div class="bg-[#121212] border border-[#262626] rounded-lg overflow-hidden">
+                <div class="p-3.5 border-b border-[#262626] flex justify-between items-center">
+                    <h3 class="text-xs font-semibold text-neutral-300 uppercase tracking-wider font-mono">Quantitative Ranking Matrix</h3>
+                    <div class="text-[11px] text-neutral-500 font-mono">Click row to view deep forensic audit</div>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm" id="screener-table">
-                        <thead class="bg-[#080C14] text-xs uppercase text-slate-400 font-mono border-b border-[#1E293B]">
+                    <table class="w-full text-left text-xs" id="screener-table">
+                        <thead class="bg-[#0E0E0E] text-[11px] uppercase text-neutral-400 font-mono border-b border-[#262626]">
                             <tr>
-                                <th class="p-3.5">Symbol</th>
-                                <th class="p-3.5">Company Name</th>
-                                <th class="p-3.5">Price</th>
-                                <th class="p-3.5">Score</th>
-                                <th class="p-3.5">Volume</th>
-                                <th class="p-3.5">Sales</th>
-                                <th class="p-3.5">OCF</th>
-                                <th class="p-3.5">Debt</th>
-                                <th class="p-3.5">Moat</th>
-                                <th class="p-3.5">Skin</th>
-                                <th class="p-3.5">Piotroski</th>
-                                <th class="p-3.5">Altman Z</th>
-                                <th class="p-3.5">Verdict</th>
+                                <th class="p-3">Symbol</th>
+                                <th class="p-3">Company Name</th>
+                                <th class="p-3">Price</th>
+                                <th class="p-3">Score</th>
+                                <th class="p-3">Volume</th>
+                                <th class="p-3">Sales</th>
+                                <th class="p-3">OCF</th>
+                                <th class="p-3">Debt</th>
+                                <th class="p-3">Moat</th>
+                                <th class="p-3">Skin</th>
+                                <th class="p-3">Piotroski</th>
+                                <th class="p-3">Altman Z</th>
+                                <th class="p-3">Verdict</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-[#1E293B] font-mono text-slate-300" id="screener-tbody">
+                        <tbody class="divide-y divide-[#262626] font-mono text-neutral-300" id="screener-tbody">
                             <tr>
-                                <td colspan="13" class="p-8 text-center text-slate-500 font-sans">Click "Execute Screen" above to audit universe.</td>
+                                <td colspan="13" class="p-8 text-center text-neutral-500 font-sans">Click "Execute Screen" above to audit universe.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -221,51 +204,50 @@
         </section>
 
         <!-- ==================== TAB 2: FORENSIC 6-PILLAR AUDIT ==================== -->
-        <section id="tab-audit" class="space-y-6 hidden">
-            <div class="bg-[#0F172A] border border-[#1E293B] rounded-xl p-6" id="audit-header">
-                <!-- Header Info Populated Dynamically -->
+        <section id="tab-audit" class="space-y-5 hidden">
+            <div class="bg-[#121212] border border-[#262626] rounded-lg p-5" id="audit-header">
                 <div class="flex flex-wrap items-center justify-between gap-4">
                     <div>
                         <div class="flex items-center space-x-3">
-                            <h2 class="text-2xl font-black text-white font-mono" id="audit-symbol">RELIANCE.NS</h2>
-                            <span class="text-xs px-2.5 py-1 rounded-md font-mono font-bold" id="audit-signal-badge">ANALYZING</span>
+                            <h2 class="text-xl font-bold text-white font-mono" id="audit-symbol">RELIANCE.NS</h2>
+                            <span class="text-[11px] px-2 py-0.5 rounded font-mono font-medium bg-neutral-800 text-neutral-300 border border-neutral-700" id="audit-signal-badge">ANALYZING</span>
                         </div>
-                        <p class="text-sm text-slate-400 mt-1" id="audit-company-name">Reliance Industries Limited</p>
+                        <p class="text-xs text-neutral-400 mt-1 font-mono" id="audit-company-name">Reliance Industries Limited</p>
                     </div>
                     <div class="text-right">
-                        <div class="text-xs uppercase text-slate-400 font-mono font-bold">Composite Quality Score</div>
-                        <div class="text-4xl font-black text-white font-mono" id="audit-composite-score">-%</div>
+                        <div class="text-[11px] uppercase text-neutral-400 font-mono">Composite Quality Score</div>
+                        <div class="text-3xl font-bold text-white font-mono" id="audit-composite-score">-%</div>
                     </div>
                 </div>
             </div>
 
             <!-- Radar Chart & Forensic Ratios -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
                 <!-- Radar Spider Chart (5 cols) -->
-                <div class="lg:col-span-5 bg-[#0F172A] border border-[#1E293B] rounded-xl p-5 flex flex-col justify-between">
+                <div class="lg:col-span-5 bg-[#121212] border border-[#262626] rounded-lg p-4 flex flex-col justify-between">
                     <div>
-                        <h3 class="text-sm font-bold text-white uppercase tracking-wider font-mono mb-2">6-Pillar Radar Fingerprint</h3>
-                        <p class="text-xs text-slate-400">Green dotted boundary represents the 78% conviction threshold.</p>
+                        <h3 class="text-xs font-semibold text-neutral-300 uppercase tracking-wider font-mono mb-1">6-Pillar Radar Fingerprint</h3>
+                        <p class="text-[11px] text-neutral-500">Dotted line indicates 78% conviction benchmark.</p>
                     </div>
-                    <div class="relative w-full h-80 flex items-center justify-center">
+                    <div class="relative w-full h-72 flex items-center justify-center my-2">
                         <canvas id="radarChart"></canvas>
                     </div>
-                    <div class="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-[#1E293B] text-xs font-mono">
-                        <div class="bg-[#080C14] p-2 rounded border border-[#1E293B]">
-                            <span class="text-slate-400">Piotroski F-Score:</span>
-                            <b class="text-white ml-1 text-sm" id="audit-piotroski">- / 9</b>
+                    <div class="grid grid-cols-2 gap-2 pt-3 border-t border-[#262626] text-xs font-mono">
+                        <div class="bg-[#0A0A0A] p-2 rounded border border-[#262626]">
+                            <span class="text-neutral-500">Piotroski F-Score:</span>
+                            <b class="text-white ml-1" id="audit-piotroski">- / 9</b>
                         </div>
-                        <div class="bg-[#080C14] p-2 rounded border border-[#1E293B]">
-                            <span class="text-slate-400">Altman Z-Score:</span>
-                            <b class="text-white ml-1 text-sm" id="audit-altman">-</b>
+                        <div class="bg-[#0A0A0A] p-2 rounded border border-[#262626]">
+                            <span class="text-neutral-500">Altman Z-Score:</span>
+                            <b class="text-white ml-1" id="audit-altman">-</b>
                         </div>
                     </div>
                 </div>
 
                 <!-- Itemized Breakdown (7 cols) -->
-                <div class="lg:col-span-7 bg-[#0F172A] border border-[#1E293B] rounded-xl p-5 space-y-4">
-                    <h3 class="text-sm font-bold text-white uppercase tracking-wider font-mono">Institutional Forensic Scorecard</h3>
-                    <div class="space-y-3" id="audit-pillar-breakdown">
+                <div class="lg:col-span-7 bg-[#121212] border border-[#262626] rounded-lg p-4 space-y-3">
+                    <h3 class="text-xs font-semibold text-neutral-300 uppercase tracking-wider font-mono">Forensic Pillar Scorecard</h3>
+                    <div class="space-y-2.5" id="audit-pillar-breakdown">
                         <!-- Populated dynamically -->
                     </div>
                 </div>
@@ -274,99 +256,99 @@
 
         <!-- ==================== TAB 3: TRADINGVIEW TECHNICALS ==================== -->
         <section id="tab-chart" class="space-y-4 hidden">
-            <div class="bg-[#0F172A] border border-[#1E293B] rounded-xl p-4 flex items-center justify-between">
+            <div class="bg-[#121212] border border-[#262626] rounded-lg p-3.5 flex items-center justify-between">
                 <div>
-                    <h3 class="text-sm font-bold text-white uppercase tracking-wider font-mono">Real-Time TradingView Advanced Chart</h3>
-                    <p class="text-xs text-slate-400">Interactive candlestick chart with technical indicators, volume profiles, and drawing tools.</p>
+                    <h3 class="text-xs font-semibold text-neutral-300 uppercase tracking-wider font-mono">TradingView Advanced Chart</h3>
+                    <p class="text-[11px] text-neutral-500">Real-time candlestick charts with multi-timeframe indicators.</p>
                 </div>
                 <div class="flex items-center space-x-2">
-                    <input type="text" id="tv-symbol-input" value="NSE:RELIANCE" class="bg-[#080C14] border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white font-mono w-40">
-                    <button onclick="loadTradingView(document.getElementById('tv-symbol-input').value)" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-2 rounded-lg">Load Chart</button>
+                    <input type="text" id="tv-symbol-input" value="NSE:RELIANCE" class="bg-[#1A1A1A] border border-[#333333] rounded px-3 py-1.5 text-xs text-white font-mono w-36">
+                    <button onclick="loadTradingView(document.getElementById('tv-symbol-input').value)" class="bg-white hover:bg-neutral-200 text-black text-xs font-medium px-3 py-1.5 rounded">Load Chart</button>
                 </div>
             </div>
             <!-- Embedded TradingView Widget -->
-            <div class="bg-[#0F172A] border border-[#1E293B] rounded-xl p-2 h-[600px]" id="tradingview_widget_container">
+            <div class="bg-[#121212] border border-[#262626] rounded-lg p-2 h-[600px]" id="tradingview_widget_container">
                 <div id="tradingview_chart" class="w-full h-full"></div>
             </div>
         </section>
 
         <!-- ==================== TAB 4: HISTORICAL BACKTESTER ==================== -->
-        <section id="tab-backtest" class="space-y-6 hidden">
-            <div class="bg-[#0F172A] border border-[#1E293B] rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
-                <div class="flex items-center space-x-4">
-                    <label class="text-xs uppercase font-bold text-slate-400">Backtest Symbol:</label>
-                    <input type="text" id="bt-symbol" value="TCS.NS" class="bg-[#080C14] border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white font-mono w-36">
+        <section id="tab-backtest" class="space-y-5 hidden">
+            <div class="bg-[#121212] border border-[#262626] rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <label class="text-xs uppercase font-mono text-neutral-400">Symbol:</label>
+                    <input type="text" id="bt-symbol" value="TCS.NS" class="bg-[#1A1A1A] border border-[#333333] rounded px-3 py-1.5 text-xs text-white font-mono w-32">
 
-                    <label class="text-xs uppercase font-bold text-slate-400">Lookback:</label>
-                    <select id="bt-period" class="bg-[#080C14] border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white font-mono">
+                    <label class="text-xs uppercase font-mono text-neutral-400">Lookback:</label>
+                    <select id="bt-period" class="bg-[#1A1A1A] border border-[#333333] rounded px-3 py-1.5 text-xs text-white font-mono">
                         <option value="1y">1 Year</option>
                         <option value="2y" selected>2 Years</option>
                         <option value="5y">5 Years</option>
                     </select>
 
-                    <label class="text-xs uppercase font-bold text-slate-400">Capital:</label>
-                    <input type="number" id="bt-capital" value="100000" step="10000" class="bg-[#080C14] border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white font-mono w-32">
+                    <label class="text-xs uppercase font-mono text-neutral-400">Capital:</label>
+                    <input type="number" id="bt-capital" value="100000" step="10000" class="bg-[#1A1A1A] border border-[#333333] rounded px-3 py-1.5 text-xs text-white font-mono w-28">
                 </div>
 
-                <button onclick="runBacktest()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm px-5 py-2 rounded-lg transition">
+                <button onclick="runBacktest()" class="bg-white hover:bg-neutral-200 text-black font-medium text-xs px-4 py-1.5 rounded transition">
                     Run Simulation
                 </button>
             </div>
 
             <!-- Backtest Metrics Matrix -->
             <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div class="bg-[#0F172A] border border-[#1E293B] rounded-xl p-4">
-                    <div class="text-xs uppercase font-bold text-slate-400 font-mono">Total Return</div>
-                    <div class="text-2xl font-black font-mono text-emerald-400 mt-1" id="bt-metric-return">-</div>
+                <div class="bg-[#121212] border border-[#262626] rounded-lg p-3.5">
+                    <div class="text-[11px] uppercase font-mono text-neutral-400">Total Return</div>
+                    <div class="text-xl font-bold font-mono text-white mt-1" id="bt-metric-return">-</div>
                 </div>
-                <div class="bg-[#0F172A] border border-[#1E293B] rounded-xl p-4">
-                    <div class="text-xs uppercase font-bold text-slate-400 font-mono">CAGR</div>
-                    <div class="text-2xl font-black font-mono text-white mt-1" id="bt-metric-cagr">-</div>
+                <div class="bg-[#121212] border border-[#262626] rounded-lg p-3.5">
+                    <div class="text-[11px] uppercase font-mono text-neutral-400">CAGR</div>
+                    <div class="text-xl font-bold font-mono text-white mt-1" id="bt-metric-cagr">-</div>
                 </div>
-                <div class="bg-[#0F172A] border border-[#1E293B] rounded-xl p-4">
-                    <div class="text-xs uppercase font-bold text-slate-400 font-mono">Sharpe Ratio</div>
-                    <div class="text-2xl font-black font-mono text-sky-400 mt-1" id="bt-metric-sharpe">-</div>
+                <div class="bg-[#121212] border border-[#262626] rounded-lg p-3.5">
+                    <div class="text-[11px] uppercase font-mono text-neutral-400">Sharpe Ratio</div>
+                    <div class="text-xl font-bold font-mono text-white mt-1" id="bt-metric-sharpe">-</div>
                 </div>
-                <div class="bg-[#0F172A] border border-[#1E293B] rounded-xl p-4">
-                    <div class="text-xs uppercase font-bold text-slate-400 font-mono">Max Drawdown</div>
-                    <div class="text-2xl font-black font-mono text-rose-400 mt-1" id="bt-metric-dd">-</div>
+                <div class="bg-[#121212] border border-[#262626] rounded-lg p-3.5">
+                    <div class="text-[11px] uppercase font-mono text-neutral-400">Max Drawdown</div>
+                    <div class="text-xl font-bold font-mono text-white mt-1" id="bt-metric-dd">-</div>
                 </div>
-                <div class="bg-[#0F172A] border border-[#1E293B] rounded-xl p-4">
-                    <div class="text-xs uppercase font-bold text-slate-400 font-mono">Alpha vs Benchmark</div>
-                    <div class="text-2xl font-black font-mono text-purple-400 mt-1" id="bt-metric-alpha">-</div>
+                <div class="bg-[#121212] border border-[#262626] rounded-lg p-3.5">
+                    <div class="text-[11px] uppercase font-mono text-neutral-400">Alpha vs Benchmark</div>
+                    <div class="text-xl font-bold font-mono text-white mt-1" id="bt-metric-alpha">-</div>
                 </div>
             </div>
 
             <!-- Equity Curve Line Chart -->
-            <div class="bg-[#0F172A] border border-[#1E293B] rounded-xl p-5">
-                <h3 class="text-sm font-bold text-white uppercase tracking-wider font-mono mb-4">Portfolio Growth Trajectory vs Benchmark Index</h3>
-                <div class="h-80">
+            <div class="bg-[#121212] border border-[#262626] rounded-lg p-4">
+                <h3 class="text-xs font-semibold text-neutral-300 uppercase tracking-wider font-mono mb-3">Portfolio Growth Trajectory vs Benchmark</h3>
+                <div class="h-72">
                     <canvas id="equityChart"></canvas>
                 </div>
             </div>
         </section>
 
         <!-- ==================== TAB 5: POSITION SIZING & RISK ==================== -->
-        <section id="tab-risk" class="space-y-6 hidden">
-            <div class="bg-[#0F172A] border border-[#1E293B] rounded-xl p-5">
-                <h3 class="text-base font-bold text-white uppercase tracking-wider font-mono mb-1">Capital Preservation & Dynamic Position Sizing</h3>
-                <p class="text-xs text-slate-400">Institutional money management: 2.0x ATR dynamic stop loss with strictly capped 1.5% portfolio risk per position.</p>
+        <section id="tab-risk" class="space-y-5 hidden">
+            <div class="bg-[#121212] border border-[#262626] rounded-lg p-4">
+                <h3 class="text-xs font-semibold text-neutral-300 uppercase tracking-wider font-mono mb-1">Capital Allocation & Position Sizing</h3>
+                <p class="text-[11px] text-neutral-500">Strict money management: 2.0x ATR stop loss with risk capped at 1.5% of capital.</p>
 
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-5">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-4">
                     <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase font-mono">Security Ticker:</label>
-                        <input type="text" id="risk-symbol" value="RELIANCE.NS" class="w-full mt-1 bg-[#080C14] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-mono">
+                        <label class="text-[11px] font-medium text-neutral-400 uppercase font-mono">Security Ticker:</label>
+                        <input type="text" id="risk-symbol" value="RELIANCE.NS" class="w-full mt-1 bg-[#1A1A1A] border border-[#333333] rounded px-3 py-1.5 text-xs text-white font-mono">
                     </div>
                     <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase font-mono">Portfolio Capital:</label>
-                        <input type="number" id="risk-capital" value="100000" step="10000" class="w-full mt-1 bg-[#080C14] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-mono">
+                        <label class="text-[11px] font-medium text-neutral-400 uppercase font-mono">Portfolio Capital:</label>
+                        <input type="number" id="risk-capital" value="100000" step="10000" class="w-full mt-1 bg-[#1A1A1A] border border-[#333333] rounded px-3 py-1.5 text-xs text-white font-mono">
                     </div>
                     <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase font-mono">Max Risk per Position (%):</label>
-                        <input type="number" id="risk-pct" value="1.5" step="0.1" class="w-full mt-1 bg-[#080C14] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-mono">
+                        <label class="text-[11px] font-medium text-neutral-400 uppercase font-mono">Max Risk per Position (%):</label>
+                        <input type="number" id="risk-pct" value="1.5" step="0.1" class="w-full mt-1 bg-[#1A1A1A] border border-[#333333] rounded px-3 py-1.5 text-xs text-white font-mono">
                     </div>
                     <div class="flex items-end">
-                        <button onclick="calculateRiskPlan()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm py-2 px-4 rounded-lg transition">
+                        <button onclick="calculateRiskPlan()" class="w-full bg-white hover:bg-neutral-200 text-black font-medium text-xs py-1.5 px-3 rounded transition">
                             Calculate Order Plan
                         </button>
                     </div>
@@ -374,7 +356,7 @@
             </div>
 
             <!-- Risk Calculation Results -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="risk-results-grid">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="risk-results-grid">
                 <!-- Populated dynamically -->
             </div>
         </section>
@@ -382,8 +364,8 @@
     </main>
 
     <!-- FOOTER -->
-    <footer class="border-t border-[#1E293B] bg-[#0A0F1D] py-4 px-6 mt-12 text-center text-xs text-slate-500 font-mono">
-        ALPHA6 Enterprise Quantitative Terminal &copy; 2026. Built with Senior Engineering & Financial Rigor. Zero Tolerance for Unhedged Risk.
+    <footer class="border-t border-[#262626] bg-[#0A0A0A] py-3.5 px-6 mt-12 text-center text-xs text-neutral-500 font-mono">
+        ALPHA6 Enterprise Quantitative Terminal &copy; 2026. Built with Senior Financial Discipline & Risk Management.
     </footer>
 
     <!-- App JavaScript -->

@@ -1,6 +1,6 @@
 /**
  * ALPHA6 Enterprise Terminal Client JavaScript
- * Connects to FastAPI endpoints and powers real-time institutional analytics.
+ * Minimalist Institutional Design & Real-Time Analytics.
  */
 
 let radarChartInstance = null;
@@ -8,7 +8,7 @@ let equityChartInstance = null;
 
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', () => {
-    // Check if custom universe dropdown changes
+    // Universe dropdown toggle
     const univSelect = document.getElementById('screener-universe');
     if (univSelect) {
         univSelect.addEventListener('change', (e) => {
@@ -21,13 +21,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Run initial screener on load
+    // Run initial workflows
     runScreener();
-    // Preload default audit
     executeAudit('RELIANCE.NS');
-    // Preload backtest
     runBacktest();
-    // Preload risk plan
     calculateRiskPlan();
 });
 
@@ -72,10 +69,10 @@ async function runScreener() {
 
     const btn = document.getElementById('btn-run-screener');
     btn.disabled = true;
-    btn.innerHTML = `<span>Auditing Universe...</span>`;
+    btn.innerHTML = `<span>Scanning...</span>`;
 
     const tbody = document.getElementById('screener-tbody');
-    tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-sky-400 font-mono animate-pulse">Running multi-threaded 6-pillar forensic audit...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-neutral-400 font-mono">Running quantitative 6-pillar audit...</td></tr>`;
 
     try {
         let url = `/api/screen?universe=${universe}&threshold=${threshold}`;
@@ -90,7 +87,7 @@ async function runScreener() {
         document.getElementById('kpi-total').innerText = data.total_scanned;
         document.getElementById('kpi-passed').innerText = data.high_conviction_count;
         const passRate = data.total_scanned > 0 ? ((data.high_conviction_count / data.total_scanned) * 100).toFixed(0) : 0;
-        document.getElementById('kpi-pass-rate').innerText = `${passRate}% Selection Rate`;
+        document.getElementById('kpi-pass-rate').innerText = `${passRate}% Pass Rate`;
 
         const avgScore = data.results.length > 0 
             ? (data.results.reduce((acc, r) => acc + r.composite_score, 0) / data.results.length).toFixed(1)
@@ -106,62 +103,62 @@ async function runScreener() {
         if (data.high_conviction.length > 0) {
             data.high_conviction.slice(0, 3).forEach(pick => {
                 const card = document.createElement('div');
-                card.className = 'bg-[#0F172A] border border-[#1E293B] hover:border-emerald-500/50 transition rounded-xl p-4 cursor-pointer';
+                card.className = 'bg-[#121212] border border-[#262626] hover:border-neutral-500 transition rounded-lg p-4 cursor-pointer';
                 card.onclick = () => { executeAudit(pick.symbol); switchTab('tab-audit'); };
                 card.innerHTML = `
                     <div class="flex justify-between items-center mb-1">
-                        <span class="text-base font-bold text-white font-mono">${pick.symbol}</span>
-                        <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-mono font-bold">${pick.composite_score}% BUY</span>
+                        <span class="text-sm font-bold text-white font-mono">${pick.symbol}</span>
+                        <span class="text-[11px] px-2 py-0.5 rounded bg-neutral-800 text-neutral-200 border border-neutral-700 font-mono font-bold">${pick.composite_score}% BUY</span>
                     </div>
-                    <div class="text-xs text-slate-400 mb-3 truncate">${pick.name}</div>
-                    <div class="text-xl font-bold text-white font-mono mb-2">${pick.currency} ${parseFloat(pick.price).toFixed(2)}</div>
-                    <div class="grid grid-cols-2 gap-1 text-[11px] font-mono text-slate-300 pt-2 border-t border-[#1E293B]">
-                        <div>OCF Quality: <b class="text-emerald-400">${pick.ocf_score}/100</b></div>
-                        <div>Debt Health: <b class="text-emerald-400">${pick.debt_score}/100</b></div>
+                    <div class="text-xs text-neutral-400 mb-2 truncate">${pick.name}</div>
+                    <div class="text-lg font-bold text-white font-mono mb-2">${pick.currency} ${parseFloat(pick.price).toFixed(2)}</div>
+                    <div class="grid grid-cols-2 gap-1 text-[11px] font-mono text-neutral-300 pt-2 border-t border-[#262626]">
+                        <div>OCF Quality: <b class="text-white">${pick.ocf_score}/100</b></div>
+                        <div>Debt Health: <b class="text-white">${pick.debt_score}/100</b></div>
                     </div>
                 `;
                 topGrid.appendChild(card);
             });
         } else {
-            topGrid.innerHTML = `<div class="col-span-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-mono">No equities cleared the strict ${threshold}% conviction threshold today with zero red flags. Capital is safely preserved.</div>`;
+            topGrid.innerHTML = `<div class="col-span-3 p-3.5 rounded bg-[#121212] border border-[#262626] text-neutral-400 text-xs font-mono">No equities cleared the strict ${threshold}% threshold with zero red flags today. Capital is safely in cash.</div>`;
         }
 
         // Render Table Rows
         tbody.innerHTML = '';
         data.results.forEach(r => {
             const tr = document.createElement('tr');
-            tr.className = 'hover:bg-[#1E293B]/40 cursor-pointer transition';
+            tr.className = 'hover:bg-[#1A1A1A] cursor-pointer transition';
             tr.onclick = () => { executeAudit(r.symbol); switchTab('tab-audit'); };
 
             const isPass = r.is_recommended;
             const hasFlags = r.red_flag_count > 0;
             const badgeClass = isPass 
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
-                : (hasFlags ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30');
+                ? 'bg-white text-black font-semibold' 
+                : (hasFlags ? 'bg-neutral-800 text-neutral-400 border border-neutral-700' : 'bg-neutral-900 text-neutral-300 border border-neutral-800');
 
-            const scoreColor = r.composite_score >= 78 ? 'text-emerald-400 font-bold' : (r.composite_score >= 60 ? 'text-amber-400' : 'text-rose-400');
+            const scoreWeight = r.composite_score >= 78 ? 'text-white font-bold' : (r.composite_score >= 60 ? 'text-neutral-300' : 'text-neutral-500');
 
             tr.innerHTML = `
-                <td class="p-3.5 font-bold text-sky-400">${r.symbol}</td>
-                <td class="p-3.5 font-sans font-medium text-slate-200 truncate max-w-[180px]">${r.name}</td>
-                <td class="p-3.5 font-mono">${r.currency} ${parseFloat(r.price).toFixed(2)}</td>
-                <td class="p-3.5 font-mono ${scoreColor}">${r.composite_score}%</td>
-                <td class="p-3.5 font-mono text-slate-300">${r.volume_score}</td>
-                <td class="p-3.5 font-mono text-slate-300">${r.sales_score}</td>
-                <td class="p-3.5 font-mono text-slate-300">${r.ocf_score}</td>
-                <td class="p-3.5 font-mono text-slate-300">${r.debt_score}</td>
-                <td class="p-3.5 font-mono text-slate-300">${r.pricing_score}</td>
-                <td class="p-3.5 font-mono text-slate-300">${r.skin_score}</td>
-                <td class="p-3.5 font-mono text-slate-300">${r.piotroski_f_score}/9</td>
-                <td class="p-3.5 font-mono text-slate-300">${r.altman_z_score}</td>
-                <td class="p-3.5"><span class="text-xs px-2 py-0.5 rounded font-mono font-bold ${badgeClass}">${r.signal}</span></td>
+                <td class="p-3 font-bold text-white">${r.symbol}</td>
+                <td class="p-3 font-sans font-normal text-neutral-300 truncate max-w-[180px]">${r.name}</td>
+                <td class="p-3 font-mono">${r.currency} ${parseFloat(r.price).toFixed(2)}</td>
+                <td class="p-3 font-mono ${scoreWeight}">${r.composite_score}%</td>
+                <td class="p-3 font-mono text-neutral-400">${r.volume_score}</td>
+                <td class="p-3 font-mono text-neutral-400">${r.sales_score}</td>
+                <td class="p-3 font-mono text-neutral-400">${r.ocf_score}</td>
+                <td class="p-3 font-mono text-neutral-400">${r.debt_score}</td>
+                <td class="p-3 font-mono text-neutral-400">${r.pricing_score}</td>
+                <td class="p-3 font-mono text-neutral-400">${r.skin_score}</td>
+                <td class="p-3 font-mono text-neutral-400">${r.piotroski_f_score}/9</td>
+                <td class="p-3 font-mono text-neutral-400">${r.altman_z_score}</td>
+                <td class="p-3"><span class="text-[10px] px-2 py-0.5 rounded font-mono ${badgeClass}">${r.signal}</span></td>
             `;
             tbody.appendChild(tr);
         });
 
     } catch (e) {
         console.error(e);
-        tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-rose-400 font-mono">Error scanning universe: ${e.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-neutral-400 font-mono">Error scanning universe: ${e.message}</td></tr>`;
     } finally {
         btn.disabled = false;
         btn.innerHTML = `<span>Execute Screen</span>`;
@@ -186,8 +183,8 @@ async function executeAudit(symbol) {
         const badge = document.getElementById('audit-signal-badge');
         badge.innerText = ev.signal;
         badge.className = ev.is_recommended 
-            ? 'text-xs px-2.5 py-1 rounded-md font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-            : (ev.red_flags.length > 0 ? 'text-xs px-2.5 py-1 rounded-md font-mono font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30' : 'text-xs px-2.5 py-1 rounded-md font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30');
+            ? 'text-xs px-2.5 py-0.5 rounded font-mono font-bold bg-white text-black'
+            : (ev.red_flags.length > 0 ? 'text-xs px-2.5 py-0.5 rounded font-mono font-medium bg-neutral-900 text-neutral-400 border border-neutral-800' : 'text-xs px-2.5 py-0.5 rounded font-mono font-medium bg-neutral-800 text-neutral-200 border border-neutral-700');
 
         document.getElementById('audit-piotroski').innerText = `${ev.piotroski_f_score} / 9`;
         document.getElementById('audit-altman').innerText = `${ev.altman_z_score} (${ev.altman_status.split(' ')[0]})`;
@@ -208,27 +205,24 @@ async function executeAudit(symbol) {
             { key: 'skin_in_game', title: '6. Promoter / Insider Skin in Game' },
         ];
 
-        // Red flags warning if any
         if (ev.red_flags.length > 0) {
             const rfBox = document.createElement('div');
-            rfBox.className = 'bg-rose-500/10 border-l-4 border-rose-500 p-3 rounded text-xs text-rose-300 font-mono space-y-1';
-            rfBox.innerHTML = `<b>CRITICAL RISK SHIELD WARNINGS:</b>` + ev.red_flags.map(f => `<div>• ${f}</div>`).join('');
+            rfBox.className = 'bg-[#141414] border-l-2 border-neutral-400 p-3 rounded text-xs text-neutral-300 font-mono space-y-1';
+            rfBox.innerHTML = `<b>RISK SHIELD WARNINGS:</b>` + ev.red_flags.map(f => `<div>• ${f}</div>`).join('');
             breakdown.appendChild(rfBox);
         }
 
         pillarOrder.forEach(item => {
             const pol = p[item.key];
             const div = document.createElement('div');
-            div.className = 'bg-[#080C14] border border-[#1E293B] rounded-lg p-3.5 space-y-1.5';
-            
-            const scoreColor = pol.score >= 75 ? 'text-emerald-400' : (pol.score >= 50 ? 'text-amber-400' : 'text-rose-400');
+            div.className = 'bg-[#0E0E0E] border border-[#262626] rounded p-3 space-y-1';
             
             div.innerHTML = `
                 <div class="flex justify-between items-center">
-                    <span class="text-xs font-bold text-white uppercase font-mono">${item.title}</span>
-                    <span class="text-sm font-black font-mono ${scoreColor}">${pol.score}/100</span>
+                    <span class="text-xs font-medium text-white uppercase font-mono">${item.title}</span>
+                    <span class="text-xs font-bold font-mono text-neutral-200">${pol.score}/100</span>
                 </div>
-                <div class="text-xs text-slate-300 font-sans space-y-0.5">
+                <div class="text-xs text-neutral-400 font-sans space-y-0.5">
                     ${pol.details.map(d => `<div>• ${d}</div>`).join('')}
                 </div>
             `;
@@ -266,17 +260,17 @@ function renderRadarChart(pillars, symbol) {
                 {
                     label: symbol,
                     data: dataValues,
-                    backgroundColor: 'rgba(56, 189, 248, 0.2)',
-                    borderColor: '#38BDF8',
-                    borderWidth: 2,
-                    pointBackgroundColor: '#38BDF8'
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    borderColor: '#FFFFFF',
+                    borderWidth: 1.5,
+                    pointBackgroundColor: '#FFFFFF'
                 },
                 {
-                    label: '78% Conviction Benchmark',
+                    label: '78% Benchmark',
                     data: [78, 78, 78, 78, 78, 78],
-                    borderColor: '#10B981',
-                    borderWidth: 1.5,
-                    borderDash: [4, 4],
+                    borderColor: '#525252',
+                    borderWidth: 1,
+                    borderDash: [3, 3],
                     pointRadius: 0,
                     fill: false
                 }
@@ -289,19 +283,19 @@ function renderRadarChart(pillars, symbol) {
                 r: {
                     min: 0,
                     max: 100,
-                    grid: { color: '#1E293B' },
-                    angleLines: { color: '#1E293B' },
+                    grid: { color: '#262626' },
+                    angleLines: { color: '#262626' },
                     ticks: { display: false },
                     pointLabels: {
-                        color: '#94A3B8',
-                        font: { size: 11, family: 'Inter' }
+                        color: '#A3A3A3',
+                        font: { size: 10, family: 'Inter' }
                     }
                 }
             },
             plugins: {
                 legend: {
                     position: 'bottom',
-                    labels: { color: '#CBD5E1', font: { family: 'Inter', size: 11 } }
+                    labels: { color: '#A3A3A3', font: { family: 'Inter', size: 10 } }
                 }
             }
         }
@@ -321,7 +315,7 @@ function loadTradingView(symbol) {
         "theme": "dark",
         "style": "1",
         "locale": "en",
-        "toolbar_bg": "#0F172A",
+        "toolbar_bg": "#121212",
         "enable_publishing": false,
         "allow_symbol_change": true,
         "container_id": "tradingview_chart"
@@ -346,7 +340,6 @@ async function runBacktest() {
         document.getElementById('bt-metric-dd').innerText = `${data.max_drawdown_stock}%`;
         document.getElementById('bt-metric-alpha').innerText = `${data.alpha}%`;
 
-        // Render Equity Chart
         renderEquityChart(data.timeseries, symbol, data.benchmark_symbol);
 
     } catch (e) {
@@ -370,17 +363,17 @@ function renderEquityChart(timeseries, symbol, benchmark) {
                 {
                     label: `${symbol} Strategy`,
                     data: stockValues,
-                    borderColor: '#34D399',
-                    borderWidth: 2,
+                    borderColor: '#FFFFFF',
+                    borderWidth: 1.8,
                     fill: false,
                     pointRadius: 0
                 },
                 {
                     label: `Benchmark (${benchmark})`,
                     data: bmValues,
-                    borderColor: '#64748B',
-                    borderWidth: 1.5,
-                    borderDash: [4, 4],
+                    borderColor: '#525252',
+                    borderWidth: 1.2,
+                    borderDash: [3, 3],
                     fill: false,
                     pointRadius: 0
                 }
@@ -391,18 +384,18 @@ function renderEquityChart(timeseries, symbol, benchmark) {
             maintainAspectRatio: false,
             scales: {
                 x: {
-                    grid: { color: '#1E293B' },
-                    ticks: { color: '#64748B', maxTicksLimit: 8, font: { family: 'JetBrains Mono', size: 10 } }
+                    grid: { color: '#262626' },
+                    ticks: { color: '#737373', maxTicksLimit: 8, font: { family: 'JetBrains Mono', size: 10 } }
                 },
                 y: {
-                    grid: { color: '#1E293B' },
-                    ticks: { color: '#64748B', font: { family: 'JetBrains Mono', size: 10 } }
+                    grid: { color: '#262626' },
+                    ticks: { color: '#737373', font: { family: 'JetBrains Mono', size: 10 } }
                 }
             },
             plugins: {
                 legend: {
                     position: 'top',
-                    labels: { color: '#CBD5E1', font: { family: 'Inter', size: 11 } }
+                    labels: { color: '#A3A3A3', font: { family: 'Inter', size: 11 } }
                 }
             }
         }
@@ -422,36 +415,36 @@ async function calculateRiskPlan() {
 
         const grid = document.getElementById('risk-results-grid');
         grid.innerHTML = `
-            <div class="bg-[#0F172A] border border-[#1E293B] rounded-xl p-5 space-y-3">
-                <div class="text-xs uppercase font-bold text-slate-400 font-mono">1. Entry & Position Sizing</div>
-                <div class="text-2xl font-black font-mono text-white">${plan.currency} ${parseFloat(plan.current_price).toFixed(2)}</div>
-                <div class="text-xs text-slate-400">Current Market Reference Price</div>
-                <div class="pt-3 border-t border-[#1E293B] space-y-1.5 font-mono text-xs">
-                    <div class="flex justify-between"><span>Recommended Quantity:</span><b class="text-sky-400 text-sm">${plan.recommended_shares} Shares</b></div>
-                    <div class="flex justify-between"><span>Total Investment:</span><b class="text-white">${plan.currency} ${plan.total_investment.toLocaleString()}</b></div>
-                    <div class="flex justify-between"><span>Portfolio Weight:</span><b class="text-white">${plan.portfolio_weight_pct}%</b></div>
+            <div class="bg-[#121212] border border-[#262626] rounded-lg p-4 space-y-2">
+                <div class="text-[11px] uppercase font-mono text-neutral-400">1. Position Sizing & Entry</div>
+                <div class="text-xl font-bold font-mono text-white">${plan.currency} ${parseFloat(plan.current_price).toFixed(2)}</div>
+                <div class="text-[11px] text-neutral-500">Market Price</div>
+                <div class="pt-2 border-t border-[#262626] space-y-1 font-mono text-xs">
+                    <div class="flex justify-between text-neutral-400"><span>Quantity:</span><b class="text-white">${plan.recommended_shares} Shares</b></div>
+                    <div class="flex justify-between text-neutral-400"><span>Allocation:</span><b class="text-white">${plan.currency} ${plan.total_investment.toLocaleString()}</b></div>
+                    <div class="flex justify-between text-neutral-400"><span>Portfolio Weight:</span><b class="text-white">${plan.portfolio_weight_pct}%</b></div>
                 </div>
             </div>
 
-            <div class="bg-[#0F172A] border border-[#1E293B] rounded-xl p-5 space-y-3">
-                <div class="text-xs uppercase font-bold text-slate-400 font-mono">2. Downside Capital Shield</div>
-                <div class="text-2xl font-black font-mono text-rose-400">${plan.currency} ${parseFloat(plan.stop_loss).toFixed(2)}</div>
-                <div class="text-xs text-rose-400/80">Strict 2.0x ATR Stop Loss (${plan.stop_loss_pct}%)</div>
-                <div class="pt-3 border-t border-[#1E293B] space-y-1.5 font-mono text-xs">
-                    <div class="flex justify-between"><span>Max Capital at Risk:</span><b class="text-rose-400">${plan.currency} ${plan.max_risk_capital.toLocaleString()}</b></div>
-                    <div class="flex justify-between"><span>Risk Percentage:</span><b class="text-rose-400">Strictly Capped at ${riskPct}%</b></div>
-                    <div class="flex justify-between"><span>14-Period ATR:</span><b class="text-slate-300">${plan.atr_14}</b></div>
+            <div class="bg-[#121212] border border-[#262626] rounded-lg p-4 space-y-2">
+                <div class="text-[11px] uppercase font-mono text-neutral-400">2. Downside Risk Shield</div>
+                <div class="text-xl font-bold font-mono text-white">${plan.currency} ${parseFloat(plan.stop_loss).toFixed(2)}</div>
+                <div class="text-[11px] text-neutral-500">2.0x ATR Stop Loss (${plan.stop_loss_pct}%)</div>
+                <div class="pt-2 border-t border-[#262626] space-y-1 font-mono text-xs">
+                    <div class="flex justify-between text-neutral-400"><span>Risk Capital:</span><b class="text-white">${plan.currency} ${plan.max_risk_capital.toLocaleString()}</b></div>
+                    <div class="flex justify-between text-neutral-400"><span>Risk Envelope:</span><b class="text-white">Capped at ${riskPct}%</b></div>
+                    <div class="flex justify-between text-neutral-400"><span>14-ATR Volatility:</span><b class="text-neutral-300">${plan.atr_14}</b></div>
                 </div>
             </div>
 
-            <div class="bg-[#0F172A] border border-[#1E293B] rounded-xl p-5 space-y-3">
-                <div class="text-xs uppercase font-bold text-slate-400 font-mono">3. Asymmetric Profit Targets</div>
-                <div class="text-2xl font-black font-mono text-emerald-400">${plan.currency} ${parseFloat(plan.target_2).toFixed(2)}</div>
-                <div class="text-xs text-emerald-400/80">Target 2 Upside (+${plan.target_2_upside_pct}%)</div>
-                <div class="pt-3 border-t border-[#1E293B] space-y-1.5 font-mono text-xs">
-                    <div class="flex justify-between"><span>Target 1 (1:2 R:R):</span><b class="text-emerald-400">${plan.currency} ${plan.target_1} (+${plan.target_1_upside_pct}%)</b></div>
-                    <div class="flex justify-between"><span>Projected Gain (T2):</span><b class="text-emerald-400">${plan.currency} ${plan.potential_gain_t2.toLocaleString()}</b></div>
-                    <div class="flex justify-between"><span>Risk-to-Reward:</span><b class="text-slate-300">${plan.risk_reward_ratio}</b></div>
+            <div class="bg-[#121212] border border-[#262626] rounded-lg p-4 space-y-2">
+                <div class="text-[11px] uppercase font-mono text-neutral-400">3. Asymmetric Profit Targets</div>
+                <div class="text-xl font-bold font-mono text-white">${plan.currency} ${parseFloat(plan.target_2).toFixed(2)}</div>
+                <div class="text-[11px] text-neutral-500">Target 2 (+${plan.target_2_upside_pct}%)</div>
+                <div class="pt-2 border-t border-[#262626] space-y-1 font-mono text-xs">
+                    <div class="flex justify-between text-neutral-400"><span>Target 1 (1:2 R:R):</span><b class="text-white">${plan.currency} ${plan.target_1} (+${plan.target_1_upside_pct}%)</b></div>
+                    <div class="flex justify-between text-neutral-400"><span>Target 2 Gain:</span><b class="text-white">${plan.currency} ${plan.potential_gain_t2.toLocaleString()}</b></div>
+                    <div class="flex justify-between text-neutral-400"><span>R:R Ratio:</span><b class="text-neutral-300">${plan.risk_reward_ratio}</b></div>
                 </div>
             </div>
         `;
