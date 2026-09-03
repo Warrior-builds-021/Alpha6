@@ -39,20 +39,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+
 # Ensure templates and static directories exist
 os.makedirs("templates", exist_ok=True)
 os.makedirs("static", exist_ok=True)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
 
-# In-memory cache with TTL
-_cache = {}
-
-@app.get("/", response_class=HTMLResponse)
-async def serve_index(request: Request):
+@app.get("/", response_class=FileResponse)
+@app.head("/")
+async def serve_index():
     """Serves the main single-page quantitative trading terminal."""
-    return templates.TemplateResponse("index.html", {"request": request})
+    return FileResponse("templates/index.html", media_type="text/html")
 
 @app.get("/api/health")
 async def health():
