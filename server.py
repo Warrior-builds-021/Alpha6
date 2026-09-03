@@ -166,7 +166,7 @@ async def audit_stock(symbol: str):
     return {
         "evaluation": res,
         "risk_plan": risk_plan,
-        "tradingview_symbol": _get_tv_symbol(norm_sym)
+        "symbol": norm_sym
     }
 
 @app.get("/api/backtest")
