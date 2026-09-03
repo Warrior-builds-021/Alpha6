@@ -18,8 +18,10 @@ from core.backtester import StockBacktester
 from core.risk_manager import RiskManager
 from core.universe import (
     INDIAN_NIFTY_50, 
-    INDIAN_QUALITY_GROWTH, 
-    GLOBAL_US_MEGA_TECH, 
+    INDIAN_NIFTY_NEXT_50, 
+    INDIAN_COMMODITIES_METALS_ENERGY, 
+    INDIAN_MIDCAP_SMALLCAP_GROWTH, 
+    get_all_india_universe, 
     format_ticker
 )
 import config
@@ -94,7 +96,7 @@ def _audit_single_stock(item: dict, threshold: float = 78.0) -> Optional[dict]:
 
 @app.get("/api/screen")
 async def screen_universe(
-    universe: str = Query("nifty50", description="Universe: nifty50, growth, us, custom"),
+    universe: str = Query("nifty50", description="Universe: nifty50, niftynext50, commodities, midcap, all_india, custom"),
     custom_symbols: Optional[str] = Query(None, description="Comma-separated symbols"),
     threshold: float = Query(78.0, ge=50, le=95)
 ):
@@ -103,18 +105,22 @@ async def screen_universe(
     """
     if universe == "nifty50":
         tickers = INDIAN_NIFTY_50
-    elif universe == "growth":
-        tickers = INDIAN_QUALITY_GROWTH
-    elif universe == "us":
-        tickers = GLOBAL_US_MEGA_TECH
+    elif universe == "niftynext50":
+        tickers = INDIAN_NIFTY_NEXT_50
+    elif universe == "commodities":
+        tickers = INDIAN_COMMODITIES_METALS_ENERGY
+    elif universe == "midcap":
+        tickers = INDIAN_MIDCAP_SMALLCAP_GROWTH
+    elif universe == "all_india":
+        tickers = get_all_india_universe()
     elif universe == "custom" and custom_symbols:
         tickers = [{"symbol": format_ticker(s.strip()), "name": s.strip(), "sector": "Custom"} for s in custom_symbols.split(",") if s.strip()]
     else:
         tickers = INDIAN_NIFTY_50
 
     results = []
-    # Multi-threaded execution
-    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+    # High-concurrency worker pool (12 workers)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
         futures = [executor.submit(_audit_single_stock, item, threshold) for item in tickers]
         for f in concurrent.futures.as_completed(futures):
             res = f.result()
