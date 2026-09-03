@@ -61,6 +61,31 @@ async def serve_index():
 async def health():
     return {"status": "ONLINE", "version": "2.0.0", "threshold": config.CONVICTION_THRESHOLD}
 
+@app.get("/api/search")
+async def search_stocks(q: str = Query("", min_length=1)):
+    """
+    Returns instant matching Indian stock symbols and company names for search autocomplete.
+    """
+    query = q.strip().lower()
+    all_stocks = get_all_india_universe()
+    matches = []
+    for s in all_stocks:
+        sym = s["symbol"].lower().replace(".ns", "").replace(".bo", "")
+        name = s["name"].lower()
+        sec = s.get("sector", "").lower()
+        if query in sym or query in name or query in sec:
+            matches.append(s)
+            
+    # Also support searching any custom ticker
+    if not matches and len(query) >= 2:
+        matches.append({
+            "symbol": format_ticker(q),
+            "name": f"Security {q.upper()}",
+            "sector": "Indian Equities"
+        })
+        
+    return {"query": q, "results": matches[:8]}
+
 def _audit_single_stock(item: dict, threshold: float = 78.0) -> Optional[dict]:
     """Helper function executed in thread pool."""
     sym = item.get("symbol", "")

@@ -69,15 +69,18 @@
             <div class="flex items-center space-x-3">
                 <span class="text-lg font-bold tracking-tight text-white font-mono">ALPHA6</span>
                 <span class="text-[11px] uppercase px-2 py-0.5 rounded bg-neutral-900 text-neutral-300 border border-neutral-700 font-mono font-medium tracking-wider">Terminal</span>
-                <span class="text-neutral-600">|</span>
-                <p class="text-xs text-neutral-400 font-normal hidden sm:inline">6-Pillar Fundamental & Solvency Model</p>
             </div>
 
-            <!-- Fixed Clean Search Bar & System Status -->
+            <!-- Fixed Clean Search Bar with Live Suggestions & System Status -->
             <div class="flex items-center space-x-5">
-                <div class="flex items-center">
-                    <input type="text" id="global-ticker-search" placeholder="Search NSE/BSE Security (e.g. RELIANCE, HAL, GOLDBEES)..." class="bg-[#141414] border border-[#262626] rounded-l-md px-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-400 w-72 font-mono" onkeydown="if(event.key==='Enter') executeAudit(this.value)">
-                    <button onclick="executeAudit(document.getElementById('global-ticker-search').value)" class="bg-[#262626] hover:bg-[#333333] text-neutral-200 text-xs font-mono font-semibold px-3 py-1.5 rounded-r-md border border-l-0 border-[#262626] transition">Audit</button>
+                <div class="relative">
+                    <div class="flex items-center">
+                        <input type="text" id="global-ticker-search" placeholder="Search Security (e.g. Sun Pharma, Reliance)..." autocomplete="off" class="bg-[#141414] border border-[#262626] rounded-l-md px-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-400 w-80 font-mono" onkeydown="handleSearchKeydown(event)">
+                        <button onclick="executeAudit(document.getElementById('global-ticker-search').value)" class="bg-[#262626] hover:bg-[#333333] text-neutral-200 text-xs font-mono font-semibold px-3.5 py-1.5 rounded-r-md border border-l-0 border-[#262626] transition">Audit</button>
+                    </div>
+                    <!-- Live Suggestions Menu -->
+                    <div id="search-suggestions" class="absolute left-0 top-full mt-1.5 w-full bg-[#141414] border border-[#262626] rounded-md shadow-2xl z-50 max-h-80 overflow-y-auto hidden divide-y divide-[#262626]">
+                    </div>
                 </div>
                 <div class="h-4 w-px bg-neutral-800"></div>
                 <div class="flex items-center space-x-2 font-mono text-xs text-neutral-400">
@@ -394,7 +397,7 @@
 
     <!-- FOOTER -->
     <footer class="border-t border-[#262626] bg-[#0A0A0A] py-3.5 px-6 mt-12 text-center text-xs text-neutral-500 font-mono">
-        ALPHA6 Enterprise Quantitative Terminal &copy; 2026. Built with Senior Financial Discipline & Risk Management.
+        ALPHA6 Terminal &copy; 2026.
     </footer>
 
     <!-- App JavaScript -->

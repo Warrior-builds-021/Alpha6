@@ -7,6 +7,9 @@ let radarChartInstance = null;
 let equityChartInstance = null;
 let currentChartSymbol = 'RELIANCE.NS';
 let currentChartPeriod = '1y';
+let searchDebounceTimer = null;
+let currentSuggestions = [];
+let selectedSuggestionIndex = -1;
 
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', () => {
@@ -22,6 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // Initialize Autocomplete Search
+    initSearchAutocomplete();
 
     // Run initial workflows
     runScreener();
@@ -621,4 +627,129 @@ async function calculateRiskPlan() {
     } catch (e) {
         console.error(e);
     }
+}
+
+// ==================== LIVE SEARCH AUTOCOMPLETE ====================
+function initSearchAutocomplete() {
+    const input = document.getElementById('global-ticker-search');
+    const dropdown = document.getElementById('search-suggestions');
+    if (!input || !dropdown) return;
+
+    input.addEventListener('input', (e) => {
+        const val = e.target.value.trim();
+        clearTimeout(searchDebounceTimer);
+        selectedSuggestionIndex = -1;
+
+        if (val.length < 1) {
+            dropdown.innerHTML = '';
+            dropdown.classList.add('hidden');
+            return;
+        }
+
+        searchDebounceTimer = setTimeout(async () => {
+            try {
+                const res = await fetch(`/api/search?q=${encodeURIComponent(val)}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                currentSuggestions = data.results || [];
+                renderSearchSuggestions(currentSuggestions);
+            } catch (err) {
+                console.error(err);
+            }
+        }, 150);
+    });
+
+    // Close dropdown on click outside
+    document.addEventListener('click', (e) => {
+        if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+
+    input.addEventListener('focus', () => {
+        if (input.value.trim().length >= 1 && currentSuggestions.length > 0) {
+            dropdown.classList.remove('hidden');
+        }
+    });
+}
+
+function renderSearchSuggestions(results) {
+    const dropdown = document.getElementById('search-suggestions');
+    if (!dropdown) return;
+
+    if (!results || results.length === 0) {
+        dropdown.innerHTML = '<div class="p-3 text-xs text-neutral-500 font-mono">No matching securities found.</div>';
+        dropdown.classList.remove('hidden');
+        return;
+    }
+
+    dropdown.innerHTML = '';
+    results.forEach((item, idx) => {
+        const div = document.createElement('div');
+        div.id = `suggestion-item-${idx}`;
+        div.className = 'p-2.5 hover:bg-[#202020] cursor-pointer flex justify-between items-center transition';
+        div.onmousedown = () => selectSuggestion(item.symbol);
+        div.innerHTML = `
+            <div>
+                <div class="text-xs font-bold text-white font-mono">${item.symbol}</div>
+                <div class="text-[11px] text-neutral-400 truncate max-w-[200px]">${item.name}</div>
+            </div>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-mono">${item.sector.split('/')[0].trim()}</span>
+        `;
+        dropdown.appendChild(div);
+    });
+    dropdown.classList.remove('hidden');
+}
+
+function selectSuggestion(symbol) {
+    const input = document.getElementById('global-ticker-search');
+    const dropdown = document.getElementById('search-suggestions');
+    if (input) input.value = symbol;
+    if (dropdown) dropdown.classList.add('hidden');
+    executeAudit(symbol);
+    switchTab('tab-audit');
+}
+
+function handleSearchKeydown(e) {
+    const dropdown = document.getElementById('search-suggestions');
+    const input = document.getElementById('global-ticker-search');
+    if (!dropdown || dropdown.classList.contains('hidden') || currentSuggestions.length === 0) {
+        if (e.key === 'Enter') {
+            executeAudit(input.value);
+            switchTab('tab-audit');
+        }
+        return;
+    }
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, currentSuggestions.length - 1);
+        highlightSuggestion(selectedSuggestionIndex);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, 0);
+        highlightSuggestion(selectedSuggestionIndex);
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < currentSuggestions.length) {
+            selectSuggestion(currentSuggestions[selectedSuggestionIndex].symbol);
+        } else {
+            selectSuggestion(input.value);
+        }
+    } else if (e.key === 'Escape') {
+        dropdown.classList.add('hidden');
+    }
+}
+
+function highlightSuggestion(index) {
+    currentSuggestions.forEach((_, idx) => {
+        const el = document.getElementById(`suggestion-item-${idx}`);
+        if (el) {
+            if (idx === index) {
+                el.classList.add('bg-[#262626]');
+            } else {
+                el.classList.remove('bg-[#262626]');
+            }
+        }
+    });
 }
