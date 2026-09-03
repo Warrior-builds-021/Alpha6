@@ -10,6 +10,8 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import concurrent.futures
+import yfinance as yf
+import numpy as np
 from typing import Optional, List
 
 from core.data_fetcher import StockDataFetcher
@@ -223,14 +225,89 @@ async def calculate_position(
     plan["symbol"] = norm_sym
     return plan
 
-def _get_tv_symbol(sym: str) -> str:
-    """Translates symbol to TradingView Widget format (e.g. 'RELIANCE.NS' -> 'BSE:RELIANCE' or 'NSE:RELIANCE')."""
-    if sym.endswith(".NS"):
-        return f"NSE:{sym[:-3]}"
-    elif sym.endswith(".BO"):
-        return f"BSE:{sym[:-3]}"
-    else:
-        return f"NASDAQ:{sym}"
+@app.get("/api/candles/{symbol}")
+async def get_candles(symbol: str, period: str = "1y"):
+    """
+    Returns native OHLCV candlestick data and technical indicators directly from live market.
+    """
+    norm_sym = format_ticker(symbol)
+    try:
+        t = yf.Ticker(norm_sym)
+        # Fetch appropriate lookback
+        fetch_period = "5y" if period in ["2y", "5y"] else "2y"
+        df = t.history(period=fetch_period)
+        
+        if df.empty:
+            return JSONResponse(status_code=404, content={"error": f"Candlestick data for {symbol} unavailable."})
+
+        # Trim to requested period
+        if period == "1mo":
+            df = df.tail(22)
+        elif period == "3mo":
+            df = df.tail(66)
+        elif period == "6mo":
+            df = df.tail(130)
+        elif period == "1y":
+            df = df.tail(252)
+        elif period == "2y":
+            df = df.tail(504)
+
+        close = df["Close"]
+        sma20 = close.ewm(span=20, adjust=False).mean()
+        sma50 = close.rolling(window=min(50, len(close)), min_periods=1).mean()
+        sma200 = close.rolling(window=min(200, len(close)), min_periods=1).mean()
+
+        # 14-period RSI
+        delta = close.diff()
+        gain = delta.clip(lower=0)
+        loss = -delta.clip(upper=0)
+        avg_gain = gain.rolling(window=14, min_periods=1).mean()
+        avg_loss = loss.rolling(window=14, min_periods=1).mean()
+        rs = avg_gain / avg_loss.replace(0, np.nan)
+        rsi_series = 100 - (100 / (1 + rs))
+        rsi_series = rsi_series.fillna(50.0)
+
+        dates = [str(d)[:10] for d in df.index]
+        opens = [round(float(v), 2) for v in df["Open"]]
+        highs = [round(float(v), 2) for v in df["High"]]
+        lows = [round(float(v), 2) for v in df["Low"]]
+        closes = [round(float(v), 2) for v in df["Close"]]
+        volumes = [int(v) for v in df["Volume"]]
+
+        sma20_list = [round(float(v), 2) if not np.isnan(v) else None for v in sma20]
+        sma50_list = [round(float(v), 2) if not np.isnan(v) else None for v in sma50]
+        sma200_list = [round(float(v), 2) if not np.isnan(v) else None for v in sma200]
+        rsi_list = [round(float(v), 1) if not np.isnan(v) else 50.0 for v in rsi_series]
+
+        curr_p = closes[-1] if closes else 0.0
+        curr_rsi = rsi_list[-1] if rsi_list else 50.0
+        curr_sma50 = sma50_list[-1] if sma50_list else None
+        curr_sma200 = sma200_list[-1] if sma200_list else None
+
+        return {
+            "symbol": norm_sym,
+            "currency": "INR" if norm_sym.endswith((".NS", ".BO")) else "USD",
+            "period": period,
+            "dates": dates,
+            "open": opens,
+            "high": highs,
+            "low": lows,
+            "close": closes,
+            "volume": volumes,
+            "sma20": sma20_list,
+            "sma50": sma50_list,
+            "sma200": sma200_list,
+            "rsi": rsi_list,
+            "current_price": curr_p,
+            "current_rsi": curr_rsi,
+            "current_sma50": curr_sma50,
+            "current_sma200": curr_sma200,
+            "is_above_50dma": bool(curr_p >= curr_sma50 if curr_sma50 else True),
+            "is_above_200dma": bool(curr_p >= curr_sma200 if curr_sma200 else True),
+        }
+    except Exception as e:
+        print(f"Error fetching candles for {symbol}: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 if __name__ == "__main__":
     import uvicorn

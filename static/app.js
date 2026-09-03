@@ -1,10 +1,12 @@
 /**
  * ALPHA6 Enterprise Terminal Client JavaScript
- * Minimalist Institutional Design & Real-Time Analytics.
+ * Minimalist Institutional Design, Real-Time Market Analytics & Native Candlestick Terminal.
  */
 
 let radarChartInstance = null;
 let equityChartInstance = null;
+let currentChartSymbol = 'RELIANCE.NS';
+let currentChartPeriod = '1y';
 
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', () => {
@@ -24,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Run initial workflows
     runScreener();
     executeAudit('RELIANCE.NS');
+    loadLiveChart('RELIANCE.NS', '1y');
     runBacktest();
     calculateRiskPlan();
 });
@@ -56,8 +59,8 @@ function switchTab(tabId) {
     });
 
     if (tabId === 'tab-chart') {
-        const sym = document.getElementById('tv-symbol-input').value || 'NSE:RELIANCE';
-        loadTradingView(sym);
+        const sym = document.getElementById('live-symbol-input').value || currentChartSymbol;
+        loadLiveChart(sym, currentChartPeriod);
     }
 }
 
@@ -120,7 +123,7 @@ async function runScreener() {
                 topGrid.appendChild(card);
             });
         } else {
-            topGrid.innerHTML = `<div class="col-span-3 p-3.5 rounded bg-[#121212] border border-[#262626] text-neutral-400 text-xs font-mono">No equities cleared the strict ${threshold}% threshold with zero red flags today. Capital is safely in cash.</div>`;
+            topGrid.innerHTML = `<div class="col-span-3 p-3.5 rounded bg-[#121212] border border-[#262626] text-neutral-400 text-xs font-mono">No equities cleared the strict ${threshold}% threshold with zero red flags today. Capital is safely preserved.</div>`;
         }
 
         // Render Table Rows
@@ -174,6 +177,8 @@ async function executeAudit(symbol) {
         const data = await res.json();
         const ev = data.evaluation;
         const p = ev.pillars;
+
+        currentChartSymbol = ev.symbol;
 
         // Populate Header
         document.getElementById('audit-symbol').innerText = ev.symbol;
@@ -230,7 +235,7 @@ async function executeAudit(symbol) {
         });
 
         // Set symbol for other tabs
-        document.getElementById('tv-symbol-input').value = data.tradingview_symbol;
+        document.getElementById('live-symbol-input').value = ev.symbol;
         document.getElementById('bt-symbol').value = ev.symbol;
         document.getElementById('risk-symbol').value = ev.symbol;
 
@@ -302,24 +307,188 @@ function renderRadarChart(pillars, symbol) {
     });
 }
 
-// ==================== TAB 3: TRADINGVIEW WIDGET ====================
-function loadTradingView(symbol) {
-    const container = document.getElementById('tradingview_chart');
-    container.innerHTML = '';
-    
-    new TradingView.widget({
-        "autosize": true,
-        "symbol": symbol || "NSE:RELIANCE",
-        "interval": "D",
-        "timezone": "Etc/UTC",
-        "theme": "dark",
-        "style": "1",
-        "locale": "en",
-        "toolbar_bg": "#121212",
-        "enable_publishing": false,
-        "allow_symbol_change": true,
-        "container_id": "tradingview_chart"
+// ==================== TAB 3: LIVE MARKET TECHNICAL TERMINAL ====================
+function setChartPeriod(period) {
+    currentChartPeriod = period;
+    const periods = ['1mo', '3mo', '6mo', '1y', '2y'];
+    periods.forEach(p => {
+        const btn = document.getElementById(`btn-period-${p}`);
+        if (btn) {
+            if (p === period) {
+                btn.className = 'chart-period-btn px-2.5 py-1 rounded bg-neutral-800 text-white font-bold transition';
+            } else {
+                btn.className = 'chart-period-btn px-2.5 py-1 rounded hover:text-white text-neutral-400 transition';
+            }
+        }
     });
+    const sym = document.getElementById('live-symbol-input').value || currentChartSymbol;
+    loadLiveChart(sym, period);
+}
+
+async function loadLiveChart(symbol, period = '1y') {
+    if (!symbol) return;
+    const cleanSym = symbol.trim().toUpperCase();
+    currentChartSymbol = cleanSym;
+
+    try {
+        const res = await fetch(`/api/candles/${encodeURIComponent(cleanSym)}?period=${period}`);
+        if (!res.ok) throw new Error('Failed to load live candlestick data');
+        const data = await res.json();
+
+        // Update live indicator badges
+        document.getElementById('live-indicator-price').innerText = `${data.currency} ${parseFloat(data.current_price).toFixed(2)}`;
+        document.getElementById('live-indicator-rsi').innerHTML = `<span class="${data.current_rsi >= 70 ? 'text-amber-400' : (data.current_rsi <= 30 ? 'text-emerald-400' : 'text-white')}">${data.current_rsi}</span> <span class="text-xs text-neutral-500 font-normal">(${data.current_rsi >= 70 ? 'Overbought' : (data.current_rsi <= 30 ? 'Oversold' : 'Neutral')})</span>`;
+        document.getElementById('live-indicator-sma50').innerHTML = `${data.current_sma50 ? data.currency + ' ' + data.current_sma50 : 'N/A'} <span class="text-xs ${data.is_above_50dma ? 'text-emerald-400' : 'text-neutral-500'} font-normal">(${data.is_above_50dma ? 'Bullish' : 'Bearish'})</span>`;
+        document.getElementById('live-indicator-sma200').innerHTML = `${data.current_sma200 ? data.currency + ' ' + data.current_sma200 : 'N/A'} <span class="text-xs ${data.is_above_200dma ? 'text-emerald-400' : 'text-neutral-500'} font-normal">(${data.is_above_200dma ? 'Bullish' : 'Bearish'})</span>`;
+
+        // Build Candlestick Trace
+        const candleTrace = {
+            x: data.dates,
+            open: data.open,
+            high: data.high,
+            low: data.low,
+            close: data.close,
+            type: 'candlestick',
+            name: cleanSym,
+            increasing: { line: { color: '#22C55E', width: 1 }, fillcolor: '#22C55E' },
+            decreasing: { line: { color: '#EF4444', width: 1 }, fillcolor: '#EF4444' },
+            yaxis: 'y1'
+        };
+
+        // Moving Average Traces
+        const sma20Trace = {
+            x: data.dates,
+            y: data.sma20,
+            type: 'scatter',
+            mode: 'lines',
+            name: '20 EMA',
+            line: { color: '#38BDF8', width: 1.2 },
+            yaxis: 'y1'
+        };
+
+        const sma50Trace = {
+            x: data.dates,
+            y: data.sma50,
+            type: 'scatter',
+            mode: 'lines',
+            name: '50 SMA',
+            line: { color: '#F59E0B', width: 1.2 },
+            yaxis: 'y1'
+        };
+
+        const sma200Trace = {
+            x: data.dates,
+            y: data.sma200,
+            type: 'scatter',
+            mode: 'lines',
+            name: '200 SMA',
+            line: { color: '#A855F7', width: 1.2 },
+            yaxis: 'y1'
+        };
+
+        // Volume Bar Colors (green if close >= open, red otherwise)
+        const volumeColors = data.close.map((c, idx) => c >= data.open[idx] ? '#22C55E' : '#EF4444');
+        const volumeTrace = {
+            x: data.dates,
+            y: data.volume,
+            type: 'bar',
+            name: 'Volume',
+            marker: { color: volumeColors, opacity: 0.5 },
+            yaxis: 'y2'
+        };
+
+        // RSI Trace
+        const rsiTrace = {
+            x: data.dates,
+            y: data.rsi,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'RSI (14)',
+            line: { color: '#FFFFFF', width: 1.2 },
+            yaxis: 'y3'
+        };
+
+        const rsiUpper = {
+            x: [data.dates[0], data.dates[data.dates.length - 1]],
+            y: [70, 70],
+            type: 'scatter',
+            mode: 'lines',
+            name: 'Overbought (70)',
+            line: { color: '#737373', width: 1, dash: 'dot' },
+            hoverinfo: 'none',
+            yaxis: 'y3'
+        };
+
+        const rsiLower = {
+            x: [data.dates[0], data.dates[data.dates.length - 1]],
+            y: [30, 30],
+            type: 'scatter',
+            mode: 'lines',
+            name: 'Oversold (30)',
+            line: { color: '#737373', width: 1, dash: 'dot' },
+            hoverinfo: 'none',
+            yaxis: 'y3'
+        };
+
+        const traces = [candleTrace, sma20Trace, sma50Trace, sma200Trace, volumeTrace, rsiTrace, rsiUpper, rsiLower];
+
+        const layout = {
+            paper_bgcolor: '#121212',
+            plot_bgcolor: '#121212',
+            margin: { l: 50, r: 20, t: 30, b: 30 },
+            dragmode: 'zoom',
+            showlegend: true,
+            legend: {
+                orientation: 'h',
+                x: 0,
+                y: 1.08,
+                font: { color: '#A3A3A3', size: 10, family: 'Inter' }
+            },
+            xaxis: {
+                rangeslider: { visible: false },
+                gridcolor: '#262626',
+                tickfont: { color: '#737373', size: 10, family: 'JetBrains Mono' },
+                linecolor: '#262626'
+            },
+            yaxis: {
+                domain: [0.38, 1.0],
+                gridcolor: '#262626',
+                tickfont: { color: '#737373', size: 10, family: 'JetBrains Mono' },
+                linecolor: '#262626',
+                title: { text: `Price (${data.currency})`, font: { color: '#737373', size: 10 } }
+            },
+            yaxis2: {
+                domain: [0.20, 0.35],
+                gridcolor: '#262626',
+                tickfont: { color: '#737373', size: 9, family: 'JetBrains Mono' },
+                linecolor: '#262626',
+                title: { text: 'Vol', font: { color: '#737373', size: 10 } },
+                showgrid: false
+            },
+            yaxis3: {
+                domain: [0.0, 0.17],
+                range: [0, 100],
+                gridcolor: '#262626',
+                tickfont: { color: '#737373', size: 9, family: 'JetBrains Mono' },
+                linecolor: '#262626',
+                title: { text: 'RSI', font: { color: '#737373', size: 10 } },
+                tickvals: [30, 70]
+            }
+        };
+
+        const config = {
+            responsive: true,
+            displayModeBar: true,
+            displaylogo: false,
+            modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d']
+        };
+
+        Plotly.newPlot('live_candlestick_chart', traces, layout, config);
+
+    } catch (e) {
+        console.error(e);
+        document.getElementById('live_candlestick_chart').innerHTML = `<div class="p-8 text-center text-neutral-400 font-mono text-xs">Error loading live market candles for ${cleanSym}: ${e.message}</div>`;
+    }
 }
 
 // ==================== TAB 4: HISTORICAL BACKTESTER ====================
