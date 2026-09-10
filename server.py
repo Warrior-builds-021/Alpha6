@@ -45,17 +45,31 @@ app.add_middleware(
 
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 
-# Ensure templates and static directories exist
-os.makedirs("templates", exist_ok=True)
-os.makedirs("static", exist_ok=True)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+HTML_PATH = os.path.join(TEMPLATES_DIR, "index.html")
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+if os.path.exists(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-@app.get("/", response_class=FileResponse)
+@app.get("/", response_class=HTMLResponse)
 @app.head("/")
 async def serve_index():
     """Serves the main single-page quantitative trading terminal."""
-    return FileResponse("templates/index.html", media_type="text/html")
+    if os.path.exists(HTML_PATH):
+        with open(HTML_PATH, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read(), media_type="text/html")
+    return HTMLResponse(content="<h1>ALPHA6 Terminal Loading...</h1>", media_type="text/html")
+
+@app.get("/static/app.js")
+async def serve_static_js():
+    """Fallback static js server for serverless runtimes."""
+    js_path = os.path.join(STATIC_DIR, "app.js")
+    if os.path.exists(js_path):
+        with open(js_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read(), media_type="application/javascript")
+    return HTMLResponse(content="// script not found", status_code=404)
 
 @app.get("/api/health")
 async def health():
