@@ -90,6 +90,10 @@ async function runScreener() {
         }
 
         const res = await fetch(url);
+        if (!res.ok) {
+            const errText = await res.text();
+            throw new Error(`Server returned status ${res.status}: ${errText.slice(0, 80)}`);
+        }
         const data = await res.json();
 
         // Update KPIs

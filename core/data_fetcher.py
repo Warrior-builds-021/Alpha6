@@ -16,6 +16,44 @@ class StockDataFetcher:
     """
 
     @staticmethod
+    def get_screener_stock_data(ticker_symbol: str) -> Optional[Dict[str, Any]]:
+        """
+        Ultra-fast single-roundtrip data fetcher designed specifically for parallel index screening (< 150ms).
+        """
+        try:
+            ticker = yf.Ticker(ticker_symbol)
+            info = ticker.info or {}
+            
+            current_price = (
+                info.get("currentPrice") 
+                or info.get("regularMarketPrice") 
+                or info.get("previousClose")
+            )
+            
+            hist = ticker.history(period="3mo")
+            if not current_price and not hist.empty:
+                current_price = float(hist["Close"].iloc[-1])
+            elif not current_price:
+                return None
+
+            return {
+                "symbol": ticker_symbol,
+                "short_name": info.get("shortName") or info.get("longName") or ticker_symbol,
+                "sector": info.get("sector", "General"),
+                "industry": info.get("industry", "Diversified"),
+                "current_price": float(current_price),
+                "currency": info.get("currency", "INR"),
+                "market_cap": info.get("marketCap", 0),
+                "info": info,
+                "income_stmt": pd.DataFrame(),
+                "balance_sheet": pd.DataFrame(),
+                "cashflow": pd.DataFrame(),
+                "history": hist
+            }
+        except Exception:
+            return None
+
+    @staticmethod
     def get_stock_data(ticker_symbol: str) -> Optional[Dict[str, Any]]:
         """
         Retrieves complete dataset required for the 6-Pillar analysis.

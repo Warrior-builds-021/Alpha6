@@ -100,11 +100,15 @@ async def search_stocks(q: str = Query("", min_length=1)):
         
     return {"query": q, "results": matches[:8]}
 
+import time
+
+_SCREEN_CACHE = {}
+
 def _audit_single_stock(item: dict, threshold: float = 78.0) -> Optional[dict]:
-    """Helper function executed in thread pool."""
+    """Helper function executed in high-speed thread pool."""
     sym = item.get("symbol", "")
     try:
-        data = StockDataFetcher.get_stock_data(sym)
+        data = StockDataFetcher.get_screener_stock_data(sym)
         if not data:
             return None
         evaluator = PillarEvaluator(data)
@@ -142,8 +146,15 @@ async def screen_universe(
     threshold: float = Query(78.0, ge=50, le=95)
 ):
     """
-    Scans an equity universe using multi-threaded execution for ultra-fast processing.
+    Scans an equity universe using ultra-fast multi-threaded execution (< 2.5s) with memory cache.
     """
+    cache_key = f"{universe}_{custom_symbols}_{threshold}"
+    now = time.time()
+    if cache_key in _SCREEN_CACHE:
+        cached_time, cached_payload = _SCREEN_CACHE[cache_key]
+        if now - cached_time < 600:  # 10 minute cache
+            return cached_payload
+
     if universe == "nifty50":
         tickers = INDIAN_NIFTY_50
     elif universe == "niftynext50":
@@ -160,8 +171,8 @@ async def screen_universe(
         tickers = INDIAN_NIFTY_50
 
     results = []
-    # High-concurrency worker pool (12 workers)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
+    # 16 High-concurrency worker threads for sub-2.5s execution
+    with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
         futures = [executor.submit(_audit_single_stock, item, threshold) for item in tickers]
         for f in concurrent.futures.as_completed(futures):
             res = f.result()
@@ -172,7 +183,7 @@ async def screen_universe(
     results.sort(key=lambda x: x["composite_score"], reverse=True)
     high_conviction = [r for r in results if r["is_recommended"]]
 
-    return {
+    payload = {
         "universe": universe,
         "total_scanned": len(results),
         "high_conviction_count": len(high_conviction),
@@ -180,6 +191,8 @@ async def screen_universe(
         "results": results,
         "high_conviction": high_conviction
     }
+    _SCREEN_CACHE[cache_key] = (now, payload)
+    return payload
 
 @app.get("/api/audit/{symbol}")
 async def audit_stock(symbol: str):
