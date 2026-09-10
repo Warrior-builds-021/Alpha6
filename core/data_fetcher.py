@@ -31,6 +31,56 @@ class StockDataFetcher:
     """
 
     @staticmethod
+    def get_batch_market_data(symbols: List[str], period: str = "3mo") -> Dict[str, Dict[str, Any]]:
+        """
+        High-performance vectorized batch market data downloader.
+        Downloads prices, volumes, and moving averages for an entire universe in ONE HTTP roundtrip.
+        """
+        if not symbols:
+            return {}
+        try:
+            df = yf.download(symbols, period=period, progress=False, threads=True)
+            if df.empty:
+                return {}
+
+            results = {}
+            is_multi = isinstance(df.columns, pd.MultiIndex)
+
+            for sym in symbols:
+                try:
+                    if is_multi:
+                        closes = df['Close'][sym].dropna() if sym in df['Close'] else pd.Series()
+                        vols = df['Volume'][sym].dropna() if sym in df['Volume'] else pd.Series()
+                    else:
+                        closes = df['Close'].dropna()
+                        vols = df['Volume'].dropna()
+
+                    if len(closes) > 0:
+                        curr_p = float(closes.iloc[-1])
+                        sma50 = float(closes.tail(50).mean()) if len(closes) >= 10 else curr_p
+                        avg_vol50 = float(vols.tail(50).mean()) if len(vols) >= 10 else 1.0
+                        recent_vol = float(vols.tail(5).mean()) if len(vols) >= 5 else (float(vols.iloc[-1]) if len(vols) > 0 else 1.0)
+                        vol_ratio = round(recent_vol / avg_vol50, 2) if avg_vol50 > 0 else 1.0
+
+                        # Create synthetic history dataframe for downstream technical analysis
+                        hist_df = pd.DataFrame({'Close': closes, 'Volume': vols})
+
+                        results[sym] = {
+                            "current_price": round(curr_p, 2),
+                            "sma50": round(sma50, 2),
+                            "price_above_sma50": curr_p >= sma50,
+                            "vol_ratio": vol_ratio,
+                            "history": hist_df
+                        }
+                except Exception:
+                    continue
+
+            return results
+        except Exception as e:
+            print(f"Batch market data error: {e}")
+            return {}
+
+    @staticmethod
     def get_screener_stock_data(ticker_symbol: str) -> Optional[Dict[str, Any]]:
         """
         Ultra-fast single-roundtrip data fetcher designed specifically for parallel index screening (< 150ms).

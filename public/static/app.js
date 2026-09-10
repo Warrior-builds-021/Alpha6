@@ -11,6 +11,15 @@ let searchDebounceTimer = null;
 let currentSuggestions = [];
 let selectedSuggestionIndex = -1;
 
+// State tracker for lazy tab loading (prevents startup waterfall lag)
+const tabLoaded = {
+    'tab-screener': true,
+    'tab-audit': false,
+    'tab-chart': false,
+    'tab-backtest': false,
+    'tab-risk': false
+};
+
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', () => {
     // Universe dropdown toggle
@@ -29,15 +38,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize Autocomplete Search
     initSearchAutocomplete();
 
-    // Run initial workflows
+    // Initial load: Only execute the active Screener view!
     runScreener();
-    executeAudit('RELIANCE.NS');
-    loadLiveChart('RELIANCE.NS', '1y');
-    runBacktest();
-    calculateRiskPlan();
+
+    // Responsive window resize for Plotly candlestick terminal
+    window.addEventListener('resize', () => {
+        const chartEl = document.getElementById('native-candlestick-chart');
+        if (chartEl && window.Plotly) {
+            Plotly.Plots.resize(chartEl);
+        }
+    });
 });
 
-// ==================== TAB SWITCHING ====================
+// ==================== TAB SWITCHING (LAZY LOADING) ====================
 function switchTab(tabId) {
     const tabs = ['tab-screener', 'tab-audit', 'tab-chart', 'tab-backtest', 'tab-risk'];
     const navs = ['nav-screener', 'nav-audit', 'nav-chart', 'nav-backtest', 'nav-risk'];
@@ -64,9 +77,20 @@ function switchTab(tabId) {
         }
     });
 
-    if (tabId === 'tab-chart') {
-        const sym = document.getElementById('live-symbol-input').value || currentChartSymbol;
+    // Lazy load each module on first activation
+    if (tabId === 'tab-audit' && !tabLoaded['tab-audit']) {
+        tabLoaded['tab-audit'] = true;
+        executeAudit(currentChartSymbol || 'RELIANCE.NS');
+    } else if (tabId === 'tab-chart' && !tabLoaded['tab-chart']) {
+        tabLoaded['tab-chart'] = true;
+        const sym = document.getElementById('live-symbol-input')?.value || currentChartSymbol;
         loadLiveChart(sym, currentChartPeriod);
+    } else if (tabId === 'tab-backtest' && !tabLoaded['tab-backtest']) {
+        tabLoaded['tab-backtest'] = true;
+        runBacktest();
+    } else if (tabId === 'tab-risk' && !tabLoaded['tab-risk']) {
+        tabLoaded['tab-risk'] = true;
+        calculateRiskPlan();
     }
 }
 
@@ -633,15 +657,54 @@ async function calculateRiskPlan() {
     }
 }
 
-// ==================== LIVE SEARCH AUTOCOMPLETE ====================
+// ==================== LIVE INSTANT SEARCH AUTOCOMPLETE ====================
+const LOCAL_CATALOG = [
+    { symbol: 'RELIANCE.NS', name: 'Reliance Industries', sector: 'Energy / Telecom' },
+    { symbol: 'TCS.NS', name: 'Tata Consultancy Services', sector: 'Information Technology' },
+    { symbol: 'HDFCBANK.NS', name: 'HDFC Bank', sector: 'Financials / Banking' },
+    { symbol: 'ICICIBANK.NS', name: 'ICICI Bank', sector: 'Financials / Banking' },
+    { symbol: 'BHARTIARTL.NS', name: 'Bharti Airtel', sector: 'Telecommunications' },
+    { symbol: 'INFY.NS', name: 'Infosys', sector: 'Information Technology' },
+    { symbol: 'ITC.NS', name: 'ITC Limited', sector: 'Consumer FMCG' },
+    { symbol: 'HINDUNILVR.NS', name: 'Hindustan Unilever', sector: 'Consumer FMCG' },
+    { symbol: 'LT.NS', name: 'Larsen & Toubro', sector: 'Engineering & Capital Goods' },
+    { symbol: 'SBIN.NS', name: 'State Bank of India', sector: 'Financials / PSU Bank' },
+    { symbol: 'BAJFINANCE.NS', name: 'Bajaj Finance', sector: 'Financial Services' },
+    { symbol: 'HCLTECH.NS', name: 'HCL Technologies', sector: 'Information Technology' },
+    { symbol: 'MARUTI.NS', name: 'Maruti Suzuki', sector: 'Automobiles' },
+    { symbol: 'SUNPHARMA.NS', name: 'Sun Pharmaceutical', sector: 'Healthcare / Pharma' },
+    { symbol: 'TATACONSUM.NS', name: 'Tata Consumer Products', sector: 'Consumer FMCG' },
+    { symbol: 'TATASTEEL.NS', name: 'Tata Steel', sector: 'Metals & Mining' },
+    { symbol: 'TATAPOWER.NS', name: 'Tata Power', sector: 'Utilities / Power' },
+    { symbol: 'TATAELXSI.NS', name: 'Tata Elxsi', sector: 'Information Technology' },
+    { symbol: 'TITAN.NS', name: 'Titan Company', sector: 'Consumer Discretionary' },
+    { symbol: 'M&M.NS', name: 'Mahindra & Mahindra', sector: 'Automobiles' },
+    { symbol: 'BAJAJ-AUTO.NS', name: 'Bajaj Auto', sector: 'Automobiles' },
+    { symbol: 'WIPRO.NS', name: 'Wipro', sector: 'Information Technology' },
+    { symbol: 'ASIANPAINT.NS', name: 'Asian Paints', sector: 'Consumer Paints' },
+    { symbol: 'HINDALCO.NS', name: 'Hindalco Industries', sector: 'Metals / Aluminium' },
+    { symbol: 'CIPLA.NS', name: 'Cipla', sector: 'Healthcare / Pharma' },
+    { symbol: 'DRREDDY.NS', name: 'Dr. Reddy Laboratories', sector: 'Healthcare / Pharma' },
+    { symbol: 'PERSISTENT.NS', name: 'Persistent Systems', sector: 'Information Technology' },
+    { symbol: 'HAL.NS', name: 'Hindustan Aeronautics', sector: 'Defense & Aerospace' },
+    { symbol: 'BEL.NS', name: 'Bharat Electronics', sector: 'Defense & Aerospace' },
+    { symbol: 'TRENT.NS', name: 'Trent Limited', sector: 'Retail / Consumer' },
+    { symbol: 'ZOMATO.NS', name: 'Zomato Limited', sector: 'Internet / Food Tech' },
+    { symbol: 'GOLDBEES.NS', name: 'Nippon Gold ETF', sector: 'Precious Metals (Gold)' },
+    { symbol: 'SILVERBEES.NS', name: 'Nippon Silver ETF', sector: 'Precious Metals (Silver)' },
+    { symbol: 'COALINDIA.NS', name: 'Coal India', sector: 'Energy / Mining' },
+    { symbol: 'ONGC.NS', name: 'Oil & Natural Gas Corp', sector: 'Energy / Oil & Gas' },
+    { symbol: 'NTPC.NS', name: 'NTPC Limited', sector: 'Utilities / Power' },
+    { symbol: 'POWERGRID.NS', name: 'Power Grid Corporation', sector: 'Utilities / Power' }
+];
+
 function initSearchAutocomplete() {
     const input = document.getElementById('global-ticker-search');
     const dropdown = document.getElementById('search-suggestions');
     if (!input || !dropdown) return;
 
     input.addEventListener('input', (e) => {
-        const val = e.target.value.trim();
-        clearTimeout(searchDebounceTimer);
+        const val = e.target.value.trim().toLowerCase();
         selectedSuggestionIndex = -1;
 
         if (val.length < 1) {
@@ -650,17 +713,33 @@ function initSearchAutocomplete() {
             return;
         }
 
+        // 1. Instant 0ms local catalog match
+        const localMatches = LOCAL_CATALOG.filter(s => 
+            s.symbol.toLowerCase().includes(val) || 
+            s.name.toLowerCase().includes(val) || 
+            s.sector.toLowerCase().includes(val)
+        ).slice(0, 8);
+
+        if (localMatches.length > 0) {
+            currentSuggestions = localMatches;
+            renderSearchSuggestions(currentSuggestions);
+        }
+
+        // 2. Query backend for deep index / custom tickers with slight debounce
+        clearTimeout(searchDebounceTimer);
         searchDebounceTimer = setTimeout(async () => {
             try {
                 const res = await fetch(`/api/search?q=${encodeURIComponent(val)}`);
                 if (!res.ok) return;
                 const data = await res.json();
-                currentSuggestions = data.results || [];
-                renderSearchSuggestions(currentSuggestions);
+                if (data.results && data.results.length > 0) {
+                    currentSuggestions = data.results;
+                    renderSearchSuggestions(currentSuggestions);
+                }
             } catch (err) {
-                console.error(err);
+                // Keep local suggestions
             }
-        }, 150);
+        }, 120);
     });
 
     // Close dropdown on click outside
