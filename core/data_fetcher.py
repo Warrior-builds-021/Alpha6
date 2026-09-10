@@ -3,7 +3,22 @@ Data Fetcher Module: Ingests fundamental and technical market data
 for Indian (NSE/BSE) and Global (US/TradingView) stocks using yfinance.
 """
 
-import yfinance as yf
+import os
+import tempfile
+
+# Prevent read-only filesystem errors in Serverless environments (Vercel / AWS Lambda)
+try:
+    _tmp_cache = os.path.join(tempfile.gettempdir(), "py-yfinance")
+    os.makedirs(_tmp_cache, exist_ok=True)
+    os.environ["YFINANCE_CACHE_DIR"] = _tmp_cache
+    import yfinance as yf
+    try:
+        yf.set_tz_cache_location(_tmp_cache)
+    except Exception:
+        pass
+except Exception:
+    import yfinance as yf
+
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta

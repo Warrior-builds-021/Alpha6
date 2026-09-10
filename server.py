@@ -9,8 +9,22 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import tempfile
 import concurrent.futures
-import yfinance as yf
+
+# Set writeable cache for serverless environments
+try:
+    _tmp_cache = os.path.join(tempfile.gettempdir(), "py-yfinance")
+    os.makedirs(_tmp_cache, exist_ok=True)
+    os.environ["YFINANCE_CACHE_DIR"] = _tmp_cache
+    import yfinance as yf
+    try:
+        yf.set_tz_cache_location(_tmp_cache)
+    except Exception:
+        pass
+except Exception:
+    import yfinance as yf
+
 import numpy as np
 from typing import Optional, List
 
@@ -171,13 +185,16 @@ async def screen_universe(
         tickers = INDIAN_NIFTY_50
 
     results = []
-    # 16 High-concurrency worker threads for sub-2.5s execution
-    with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
-        futures = [executor.submit(_audit_single_stock, item, threshold) for item in tickers]
-        for f in concurrent.futures.as_completed(futures):
-            res = f.result()
-            if res:
-                results.append(res)
+    try:
+        # 8 High-concurrency worker threads optimized for serverless vCPU limits
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+            futures = [executor.submit(_audit_single_stock, item, threshold) for item in tickers]
+            for f in concurrent.futures.as_completed(futures):
+                res = f.result()
+                if res:
+                    results.append(res)
+    except Exception as e:
+        print(f"ThreadPoolExecutor error in screen_universe: {e}")
 
     # Sort descending by composite score
     results.sort(key=lambda x: x["composite_score"], reverse=True)
