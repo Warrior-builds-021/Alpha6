@@ -47,7 +47,7 @@ INDIAN_NIFTY_50: List[Dict[str, str]] = [
     {"symbol": "SBILIFE.NS", "name": "SBI Life Insurance", "sector": "Financials / Insurance"},
     {"symbol": "DRREDDY.NS", "name": "Dr. Reddy's Laboratories", "sector": "Healthcare / Pharma"},
     {"symbol": "BRITANNIA.NS", "name": "Britannia Industries", "sector": "Consumer FMCG"},
-    {"symbol": "540005.BO", "name": "LTIMindtree", "sector": "Information Technology"},
+    {"symbol": "PERSISTENT.NS", "name": "Persistent Systems", "sector": "Information Technology"},
     {"symbol": "HEROMOTOCO.NS", "name": "Hero MotoCorp", "sector": "Automobiles"},
     {"symbol": "APOLLOHOSP.NS", "name": "Apollo Hospitals", "sector": "Healthcare / Hospitals"},
     {"symbol": "BPCL.NS", "name": "Bharat Petroleum Corp", "sector": "Energy / Refining"},
