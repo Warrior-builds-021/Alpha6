@@ -1,4 +1,4 @@
-# BRIEFING — 2026-09-14T01:39:00+05:30
+# BRIEFING — 2026-09-14T01:54:00+05:30
 
 ## Mission
 Implement core quantitative engine improvements across universe parsing, 6-pillar analysis, authentic Altman Z-score, Piotroski fallback, ATR position sizing overrun guard, serverless cache redirection, and unit test fixes.
@@ -18,7 +18,7 @@ Implement core quantitative engine improvements across universe parsing, 6-pilla
 
 ## Current Parent
 - Conversation ID: e2ef6863-0926-4a1d-8a81-67c45aa8d9b5
-- Updated: not yet
+- Updated: 2026-09-13T20:20:11Z
 
 ## Task Summary
 - **What to build**:
@@ -32,18 +32,26 @@ Implement core quantitative engine improvements across universe parsing, 6-pilla
 - **Code layout**: `PROJECT.md` § Code Layout
 
 ## Key Decisions Made
-- Authentic Altman Z-score will use balance sheet and income statement fields (`working_capital`, `retained_earnings`, `ebit`, `total_assets`, `total_liabilities`, `market_cap`, `sales`) with ratio fallbacks when raw statements are sparse.
-- Piotroski F-score will inspect `cashflow` and `balance_sheet` tables if `info` omits required items.
+- Authentic Altman Z-score uses Edward Altman's 5-ratio formulation ($Z = 1.2X_1 + 1.4X_2 + 3.3X_3 + 0.6X_4 + 0.99X_5$) extracting fields from balance sheet and income statement with ratio fallbacks when statement items are omitted.
+- Piotroski F-Score inspects statement tables (`cashflow`, `balance_sheet`, `income_stmt`) when `info` omits items (e.g. Reliance OCF, ROA, CR).
+- Position sizing sets `recommended_shares = 0` when stock price exceeds single position capital cap, preventing weight overruns.
+- Ticker formatting preserves standard US symbols while maintaining `.NS` / `.BO` for Indian securities.
 
 ## Change Tracker
-- **Files modified**: None yet
-- **Build status**: Not run yet
-- **Pending issues**: Test suite failing due to missing imports and format_ticker behavior
+- **Files modified**:
+  - `core/universe.py`: Added aliases `GLOBAL_US_MEGA_TECH` and `INDIAN_QUALITY_GROWTH`, updated `format_ticker` for US symbols.
+  - `core/__init__.py`: Re-exported `GLOBAL_US_MEGA_TECH` and `INDIAN_QUALITY_GROWTH`.
+  - `core/evaluator.py`: Added `_normalize_de`, fixed 0-15% revenue growth tiers, improved OCF vs Net Income quality checks, implemented 5-ratio Altman Z-Score, implemented Piotroski statement fallback, enhanced red flag triggers.
+  - `core/risk_manager.py`: Implemented position sizing capital overrun guard and `calculate_position_size` alias.
+  - `core/backtester.py`: Universal `/tmp/py-yfinance` cache redirection before yfinance import.
+  - `test_engine.py`: Expanded with 10 comprehensive unit tests covering all features.
+- **Build status**: PASS (10/10 unit tests pass in 0.043s; FastAPI endpoints verified).
+- **Pending issues**: None.
 
 ## Quality Status
-- **Build/test result**: Not run yet
-- **Lint status**: Clean
-- **Tests added/modified**: Pending
+- **Build/test result**: 10 passed, 0 failed in 0.043s (`python test_engine.py -v`).
+- **Lint status**: Clean Python syntax across all modified modules.
+- **Tests added/modified**: 6 new unit tests added covering Altman 5-ratios, Piotroski statement fallback, sales growth tiers, D/E normalization, position sizing overrun guard, and universe aliases.
 
 ## Loaded Skills
 - None required for this quantitative engine backend task.
