@@ -188,6 +188,43 @@ INDIAN_MIDCAP_SMALLCAP_GROWTH: List[Dict[str, str]] = [
     {"symbol": "DEVYANI.NS", "name": "Devyani International", "sector": "Quick Service Restaurants"},
 ]
 
+# ==================== BACKWARD-COMPATIBLE ALIASES & GLOBAL UNIVERSES ====================
+INDIAN_QUALITY_GROWTH: List[Dict[str, str]] = [
+    {"symbol": "HAL.NS", "name": "Hindustan Aeronautics", "sector": "Defense & Aerospace"},
+    {"symbol": "BEL.NS", "name": "Bharat Electronics", "sector": "Defense Electronics"},
+    {"symbol": "TRENT.NS", "name": "Trent Limited", "sector": "Retail (Tata Group)"},
+    {"symbol": "VARUN.NS", "name": "Varun Beverages", "sector": "Consumer / Beverages"},
+    {"symbol": "POLYCAB.NS", "name": "Polycab India", "sector": "Cables & Electricals"},
+    {"symbol": "DIXON.NS", "name": "Dixon Technologies", "sector": "Electronics Manufacturing"},
+    {"symbol": "SOLARINDS.NS", "name": "Solar Industries", "sector": "Industrial Explosives"},
+    {"symbol": "KPITTECH.NS", "name": "KPIT Technologies", "sector": "Automotive Software"},
+    {"symbol": "CHOLAFIN.NS", "name": "Cholamandalam Investment", "sector": "Financial Services"},
+    {"symbol": "PERSISTENT.NS", "name": "Persistent Systems", "sector": "Information Technology"},
+]
+
+GLOBAL_US_MEGA_TECH: List[Dict[str, str]] = [
+    {"symbol": "NVDA", "name": "NVIDIA Corporation", "sector": "Semiconductors & AI"},
+    {"symbol": "MSFT", "name": "Microsoft Corporation", "sector": "Cloud & Enterprise Software"},
+    {"symbol": "AAPL", "name": "Apple Inc.", "sector": "Consumer Tech & Ecosystem"},
+    {"symbol": "GOOGL", "name": "Alphabet Inc.", "sector": "Search, Advertising & Cloud"},
+    {"symbol": "AMZN", "name": "Amazon.com Inc.", "sector": "E-Commerce & AWS Cloud"},
+    {"symbol": "META", "name": "Meta Platforms", "sector": "Social Media & AI"},
+    {"symbol": "TSLA", "name": "Tesla Inc.", "sector": "EVs, Energy & Robotics"},
+    {"symbol": "AVGO", "name": "Broadcom Inc.", "sector": "Semiconductors & Infrastructure"},
+    {"symbol": "LLY", "name": "Eli Lilly and Company", "sector": "Pharmaceuticals & Healthcare"},
+    {"symbol": "V", "name": "Visa Inc.", "sector": "Payment Networks & Fintech"},
+    {"symbol": "MA", "name": "Mastercard Inc.", "sector": "Payment Networks & Fintech"},
+    {"symbol": "ASML", "name": "ASML Holding", "sector": "Semiconductor Lithography"},
+]
+
+US_TICKER_SYMBOLS = {
+    s["symbol"] for s in GLOBAL_US_MEGA_TECH
+} | {
+    "SPY", "QQQ", "DIA", "IWM", "AMD", "INTC", "NFLX", "QCOM", "TXN", "ADBE",
+    "CRM", "ORCL", "CSCO", "IBM", "UBER", "PYPL", "ABNB", "COIN", "PLTR", "SNOW",
+    "BRK.A", "BRK.B", "JNJ", "JPM", "PG", "XOM", "CVX", "HD", "BAC", "WMT", "KO", "PEP"
+}
+
 # ==================== 5. ALL INDIA UNIFIED NSE & BSE UNIVERSE ====================
 def get_all_india_universe() -> List[Dict[str, str]]:
     """Combines all unique Indian equities, midcaps, and commodities into a single unified master universe."""
@@ -200,10 +237,10 @@ def get_all_india_universe() -> List[Dict[str, str]]:
                 master.append(item)
     return master
 
-def format_ticker(symbol: str) -> str:
+def format_ticker(symbol: str, market: str = "AUTO") -> str:
     """
-    Normalizes Indian tickers for NSE (.NS) and BSE (.BO).
-    e.g. 'RELIANCE' -> 'RELIANCE.NS', '500325' -> '500325.BO'
+    Normalizes tickers for Indian (NSE: .NS, BSE: .BO) and US markets.
+    e.g. 'RELIANCE' -> 'RELIANCE.NS', '500325' -> '500325.BO', 'AAPL' -> 'AAPL'.
     """
     clean_sym = symbol.strip().upper()
     if clean_sym.endswith(".NS") or clean_sym.endswith(".BO"):
@@ -212,5 +249,10 @@ def format_ticker(symbol: str) -> str:
     # BSE Numeric scrip code check
     if clean_sym.isdigit():
         return f"{clean_sym}.BO"
+
+    # Known US tickers or explicit US market
+    if market == "US" or clean_sym in US_TICKER_SYMBOLS:
+        return clean_sym
         
     return f"{clean_sym}.NS"
+

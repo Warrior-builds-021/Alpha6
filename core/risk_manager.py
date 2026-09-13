@@ -57,15 +57,25 @@ class RiskManager:
         max_capital_to_risk = total_portfolio_size * (risk_per_trade_pct / 100.0)
         
         # Quantity based on risk tolerance
-        risk_based_shares = int(max_capital_to_risk / risk_per_share) if risk_per_share > 0 else 1
+        risk_based_shares = int(max_capital_to_risk / risk_per_share) if risk_per_share > 0 else 0
         
         # Hard cap on single stock position
         max_capital_cap = total_portfolio_size * (max_position_size_pct / 100.0)
-        max_shares_cap = int(max_capital_cap / stock_price) if stock_price > 0 else 1
+        max_shares_cap = int(max_capital_cap / stock_price) if stock_price > 0 else 0
         
-        recommended_shares = max(1, min(risk_based_shares, max_shares_cap))
+        sizing_alert = None
+        if stock_price > max_capital_cap:
+            recommended_shares = 0
+            sizing_alert = (
+                f"Capital Overrun Guard: Unit share price ({stock_price:,.2f}) exceeds maximum allowed "
+                f"position allocation ({max_capital_cap:,.2f} = {max_position_size_pct}% of {total_portfolio_size:,.2f}). "
+                f"Recommended shares set to 0 to prevent portfolio overrun."
+            )
+        else:
+            recommended_shares = max(0, min(risk_based_shares, max_shares_cap))
+
         total_investment = round(recommended_shares * stock_price, 2)
-        portfolio_weight = round((total_investment / total_portfolio_size) * 100, 1)
+        portfolio_weight = round((total_investment / total_portfolio_size) * 100, 1) if total_portfolio_size > 0 else 0.0
 
         risk_amount = round(recommended_shares * (stock_price - stop_loss), 2)
         potential_reward_t1 = round(recommended_shares * (target_1 - stock_price), 2)
@@ -87,5 +97,12 @@ class RiskManager:
             "max_risk_capital": risk_amount,
             "potential_gain_t1": potential_reward_t1,
             "potential_gain_t2": potential_reward_t2,
+            "sizing_alert": sizing_alert,
             "capital_preservation_rule": "Strict 2x ATR Trailing Stop Loss. Never risk more than 1.5% of total portfolio on any single trade."
         }
+
+    @classmethod
+    def calculate_position_size(cls, *args, **kwargs) -> Dict[str, Any]:
+        """Convenience alias for calculate_trade_plan."""
+        return cls.calculate_trade_plan(*args, **kwargs)
+

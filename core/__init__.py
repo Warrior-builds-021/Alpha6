@@ -10,6 +10,8 @@ from .universe import (
     INDIAN_NIFTY_NEXT_50,
     INDIAN_COMMODITIES_METALS_ENERGY,
     INDIAN_MIDCAP_SMALLCAP_GROWTH,
+    INDIAN_QUALITY_GROWTH,
+    GLOBAL_US_MEGA_TECH,
     get_all_india_universe,
     format_ticker
 )
@@ -23,6 +25,9 @@ __all__ = [
     "INDIAN_NIFTY_NEXT_50",
     "INDIAN_COMMODITIES_METALS_ENERGY",
     "INDIAN_MIDCAP_SMALLCAP_GROWTH",
+    "INDIAN_QUALITY_GROWTH",
+    "GLOBAL_US_MEGA_TECH",
     "get_all_india_universe",
     "format_ticker"
 ]
+

@@ -40,6 +40,26 @@ class PillarEvaluator:
             return None
 
     @staticmethod
+    def _normalize_de(val: Any) -> Optional[float]:
+        """
+        Normalizes Debt-to-Equity ratio.
+        Yahoo Finance reports debtToEquity as a percentage (e.g. 1.8 for 1.8%, 10.2 for 10.2%, 350 for 350%).
+        Converts to decimal ratio (e.g. 0.018x, 0.102x, 3.50x).
+        Values already expressed as decimal ratio <= 0.5 (e.g. 0.05) are preserved.
+        """
+        if val is None:
+            return None
+        try:
+            v = float(val)
+            if np.isnan(v):
+                return None
+            if v > 0.5:
+                return v / 100.0
+            return v
+        except (ValueError, TypeError):
+            return None
+
+    @staticmethod
     def _safe_float(val: Any) -> Optional[float]:
         """Safely parses float with NaN protection."""
         if val is None:
@@ -204,14 +224,24 @@ class PillarEvaluator:
 
         rev_growth = self._normalize_pct(self.info.get("revenueGrowth"))
         if rev_growth is not None:
-            if rev_growth >= 0.15:
+            if rev_growth >= 0.20:
+                score += 25
+                details.append(f"Exceptional quarterly revenue growth: YoY Revenue up {rev_growth*100:.1f}%.")
+            elif rev_growth >= 0.12:
                 score += 20
-                details.append(f"Latest YoY Revenue Growth at {rev_growth*100:.1f}%.")
-            elif rev_growth < 0:
+                details.append(f"Strong quarterly revenue growth: YoY Revenue up {rev_growth*100:.1f}%.")
+            elif rev_growth >= 0.05:
+                score += 12
+                details.append(f"Steady quarterly revenue growth: YoY Revenue up {rev_growth*100:.1f}%.")
+            elif rev_growth >= 0.0:
+                score += 5
+                details.append(f"Modest positive quarterly revenue growth: YoY Revenue up {rev_growth*100:.1f}%.")
+            else:
                 score -= 25
                 details.append(f"Topline contraction detected: Latest revenue down {abs(rev_growth)*100:.1f}%.")
         elif cagr_3y is None:
             score += 10
+            details.append("Baseline sales growth assumed in absence of quarterly reporting.")
 
         return {
             "pillar_name": "Sales Revenue Growth",
@@ -252,20 +282,32 @@ class PillarEvaluator:
                 "details": details
             }
 
-        if ocf_val is not None and net_inc is not None and net_inc > 0:
-            ocf_to_net_income = ocf_val / net_inc
-            if ocf_to_net_income >= 1.1:
-                score += 35
-                details.append(f"Elite Quality of Earnings: OCF/Net Income is {ocf_to_net_income:.2f}x (Cash exceeds accounting profit).")
-            elif ocf_to_net_income >= 0.85:
-                score += 25
-                details.append(f"Healthy Cash Conversion: OCF/Net Income is {ocf_to_net_income:.2f}x.")
-            elif ocf_to_net_income >= 0.5:
-                score += 5
-                details.append(f"Mediocre Cash Conversion: OCF/Net Income is {ocf_to_net_income:.2f}x (Working capital locked).")
-            else:
-                score -= 30
-                details.append(f"Warning: Low Cash Conversion ({ocf_to_net_income:.2f}x). Paper profits not converting to cash.")
+        if ocf_val is not None and net_inc is not None:
+            if net_inc > 0 and ocf_val > 0:
+                ocf_to_net_income = ocf_val / net_inc
+                if ocf_to_net_income >= 1.1:
+                    score += 35
+                    details.append(f"Elite Quality of Earnings: OCF/Net Income is {ocf_to_net_income:.2f}x (Cash exceeds accounting profit).")
+                elif ocf_to_net_income >= 0.85:
+                    score += 25
+                    details.append(f"Healthy Cash Conversion: OCF/Net Income is {ocf_to_net_income:.2f}x.")
+                elif ocf_to_net_income >= 0.5:
+                    score += 5
+                    details.append(f"Mediocre Cash Conversion: OCF/Net Income is {ocf_to_net_income:.2f}x (Working capital locked).")
+                else:
+                    score -= 30
+                    details.append(f"Warning: Low Cash Conversion ({ocf_to_net_income:.2f}x). Paper profits not converting to cash.")
+            elif net_inc > 0 and ocf_val <= 0:
+                score -= 40
+                fcf_positive = False
+                details.append("Severe Accrual Warning: Negative Operating Cash Flow despite positive reported Net Income (paper profits).")
+            elif net_inc <= 0 and ocf_val > 0:
+                score -= 20
+                details.append("Earnings Quality Warning: Operating Cash Flow is positive despite negative Net Income (accounting losses).")
+            else:  # Both net_inc <= 0 and ocf_val <= 0
+                score -= 40
+                fcf_positive = False
+                details.append("Critical Cash Drain: Both Operating Cash Flow and Net Income are negative.")
         elif ocf_val is not None and ocf_val < 0:
             score -= 40
             fcf_positive = False
@@ -293,8 +335,40 @@ class PillarEvaluator:
         score = 50.0
         details = []
         raw_de = self.info.get("debtToEquity")
-        debt_to_equity = self._normalize_pct(raw_de) if raw_de is not None else None
+        debt_to_equity = self._normalize_de(raw_de) if raw_de is not None else None
         current_ratio = self._safe_float(self.info.get("currentRatio"))
+
+        if debt_to_equity is None and not self.balance_sheet.empty:
+            tot_debt = None
+            equity = None
+            for idx in self.balance_sheet.index:
+                low = str(idx).lower()
+                if "total debt" in low:
+                    s = self.balance_sheet.loc[idx].dropna()
+                    if not s.empty:
+                        tot_debt = float(s.iloc[0])
+                elif "common stock equity" in low or "stockholders equity" in low:
+                    s = self.balance_sheet.loc[idx].dropna()
+                    if not s.empty:
+                        equity = float(s.iloc[0])
+            if tot_debt is not None and equity and equity > 0:
+                debt_to_equity = tot_debt / equity
+
+        if current_ratio is None and not self.balance_sheet.empty:
+            ca = None
+            cl = None
+            for idx in self.balance_sheet.index:
+                low = str(idx).lower()
+                if "current assets" in low:
+                    s = self.balance_sheet.loc[idx].dropna()
+                    if not s.empty:
+                        ca = float(s.iloc[0])
+                elif "current liabilities" in low:
+                    s = self.balance_sheet.loc[idx].dropna()
+                    if not s.empty:
+                        cl = float(s.iloc[0])
+            if ca is not None and cl and cl > 0:
+                current_ratio = ca / cl
 
         if self.is_financial:
             score = 80.0
@@ -424,56 +498,106 @@ class PillarEvaluator:
         score = 0
         details = []
 
+        def _get_val(df: pd.DataFrame, keys: List[str]) -> Optional[float]:
+            if df is None or df.empty:
+                return None
+            for k in keys:
+                k_low = k.strip().lower()
+                for idx in df.index:
+                    if str(idx).strip().lower() == k_low:
+                        try:
+                            s = df.loc[idx].dropna()
+                            if not s.empty:
+                                v = float(s.iloc[0])
+                                if not np.isnan(v):
+                                    return v
+                        except Exception:
+                            pass
+            return None
+
         # 1. Positive Net Income
         net_inc = self._safe_float(self.info.get("netIncomeToCommon") or self.info.get("netIncome"))
+        if net_inc is None and not self.income_stmt.empty:
+            net_inc = _get_val(self.income_stmt, ["Net Income Common Stockholders", "Net Income", "Net Income Continuous Operations", "Net Income From Continuing Operation Net Minority Interest"])
         if net_inc and net_inc > 0:
             score += 1
             details.append("Positive Net Income (+1)")
 
         # 2. Positive Operating Cash Flow
         ocf = self._safe_float(self.info.get("operatingCashflow"))
+        if ocf is None and not self.cashflow.empty:
+            ocf = _get_val(self.cashflow, ["Operating Cash Flow", "Cash From Operating Activities", "Cash Provided By Operating Activities"])
         if ocf and ocf > 0:
             score += 1
             details.append("Positive Operating Cash Flow (+1)")
 
-        # 3. Positive ROA
+        # 3. Positive Return on Assets (ROA)
         roa = self._normalize_pct(self.info.get("returnOnAssets"))
+        if roa is None and not self.balance_sheet.empty:
+            ta = _get_val(self.balance_sheet, ["Total Assets"])
+            if ta and ta > 0 and net_inc is not None:
+                roa = net_inc / ta
         if roa and roa > 0:
             score += 1
-            details.append("Positive Return on Assets (+1)")
+            details.append(f"Positive Return on Assets ({roa*100:.1f}%) (+1)")
 
         # 4. Cash flow exceeds Net Income (Quality of earnings)
         if ocf and net_inc and ocf > net_inc:
             score += 1
             details.append("Operating Cash Flow > Net Income (+1)")
 
-        # 5. Low/Decreasing Leverage
+        # 5. Low/Decreasing Leverage (D/E < 0.5x)
         raw_de = self.info.get("debtToEquity")
-        de = self._normalize_pct(raw_de) if raw_de is not None else None
+        de = self._normalize_de(raw_de) if raw_de is not None else None
+        if de is None and not self.balance_sheet.empty:
+            tot_debt = _get_val(self.balance_sheet, ["Total Debt"])
+            equity = _get_val(self.balance_sheet, ["Common Stock Equity", "Stockholders Equity", "Total Equity Gross Minority Interest"])
+            if tot_debt is not None and equity and equity > 0:
+                de = tot_debt / equity
         if de is not None and de < 0.5:
             score += 1
-            details.append("Conservative Debt-to-Equity (< 0.5x) (+1)")
+            details.append(f"Conservative Debt-to-Equity ({de:.2f}x < 0.5x) (+1)")
 
-        # 6. Current Ratio > 1.25
+        # 6. Current Ratio >= 1.25
         cr = self._safe_float(self.info.get("currentRatio"))
+        if cr is None and not self.balance_sheet.empty:
+            ca = _get_val(self.balance_sheet, ["Current Assets", "Total Current Assets"])
+            cl = _get_val(self.balance_sheet, ["Current Liabilities", "Total Current Liabilities Net Minority Interest", "Total Current Liabilities"])
+            if ca and cl and cl > 0:
+                cr = ca / cl
         if cr and cr >= 1.25:
             score += 1
             details.append(f"Healthy Liquidity (Current Ratio: {cr:.2f}) (+1)")
 
-        # 7. Positive Gross Margin
+        # 7. Positive / Robust Gross Margin (>= 25%)
         gm = self._normalize_pct(self.info.get("grossMargins"))
+        if gm is None and not self.income_stmt.empty:
+            gp = _get_val(self.income_stmt, ["Gross Profit"])
+            rev = _get_val(self.income_stmt, ["Total Revenue", "Operating Revenue"])
+            if gp and rev and rev > 0:
+                gm = gp / rev
         if gm and gm >= 0.25:
             score += 1
             details.append(f"Robust Gross Margin ({gm*100:.1f}%) (+1)")
 
         # 8. Revenue Growth
         rg = self._normalize_pct(self.info.get("revenueGrowth"))
+        if rg is None and not self.income_stmt.empty:
+            rev_rows = [r for r in self.income_stmt.index if "total revenue" in str(r).lower() or "operating revenue" in str(r).lower()]
+            if rev_rows:
+                s = self.income_stmt.loc[rev_rows[0]].dropna()
+                if len(s) >= 2 and float(s.iloc[1]) > 0:
+                    rg = (float(s.iloc[0]) - float(s.iloc[1])) / float(s.iloc[1])
         if rg and rg > 0:
             score += 1
-            details.append(f"Topline Growth (+1)")
+            details.append(f"Topline Growth ({rg*100:.1f}%) (+1)")
 
         # 9. Return on Equity >= 12%
         roe = self._normalize_pct(self.info.get("returnOnEquity"))
+        if roe is None and not self.income_stmt.empty and not self.balance_sheet.empty:
+            equity = _get_val(self.balance_sheet, ["Common Stock Equity", "Stockholders Equity", "Total Equity Gross Minority Interest"])
+            if net_inc and equity and equity > 0:
+                roe = net_inc / equity
         if roe and roe >= 0.12:
             score += 1
             details.append(f"High Capital Efficiency (ROE: {roe*100:.1f}%) (+1)")
@@ -482,37 +606,145 @@ class PillarEvaluator:
 
     # ==================== ALTMAN Z-SCORE (BANKRUPTCY RISK SHIELD) ====================
     def _calc_altman_z_score(self) -> (Optional[float], str):
+        """
+        Edward Altman's genuine 5-ratio Z-Score formula for manufacturing / corporate firms:
+        Z = 1.2*X1 + 1.4*X2 + 3.3*X3 + 0.6*X4 + 0.99*X5
+        X1 = Working Capital / Total Assets
+        X2 = Retained Earnings / Total Assets
+        X3 = EBIT / Total Assets
+        X4 = Market Value of Equity / Total Liabilities
+        X5 = Sales / Total Assets
+
+        Zones:
+        Z > 2.99: Safe Zone (Low Bankruptcy Risk)
+        1.81 <= Z <= 2.99: Grey Zone (Moderate Financial Health)
+        Z < 1.81: Distress Zone (High Insolvent Risk)
+        """
         if self.is_financial:
             return 3.5, "Safe Zone (Financial Institution)"
 
-        # Proxy Altman Z-Score calculation using core fundamental ratios
-        # Z = 1.2*(Working Capital/Total Assets) + 1.4*(Retained Earnings/Total Assets) + 3.3*(EBIT/Total Assets) + 0.6*(Market Cap/Total Liabilities) + 0.99*(Sales/Total Assets)
-        ebitda = self._safe_float(self.info.get("ebitda"))
+        def _get_val(df: pd.DataFrame, keys: List[str]) -> Optional[float]:
+            if df is None or df.empty:
+                return None
+            for k in keys:
+                k_low = k.strip().lower()
+                for idx in df.index:
+                    if str(idx).strip().lower() == k_low:
+                        try:
+                            s = df.loc[idx].dropna()
+                            if not s.empty:
+                                v = float(s.iloc[0])
+                                if not np.isnan(v):
+                                    return v
+                        except Exception:
+                            pass
+            return None
+
+        # 1. Total Assets (TA)
+        ta = _get_val(self.balance_sheet, ["Total Assets"])
+        if ta is None:
+            ta = self._safe_float(self.info.get("totalAssets"))
+
+        # 2. Working Capital (WC)
+        wc = _get_val(self.balance_sheet, ["Working Capital"])
+        if wc is None and not self.balance_sheet.empty:
+            ca = _get_val(self.balance_sheet, ["Current Assets", "Total Current Assets"])
+            cl = _get_val(self.balance_sheet, ["Current Liabilities", "Total Current Liabilities Net Minority Interest", "Total Current Liabilities"])
+            if ca is not None and cl is not None:
+                wc = ca - cl
+
+        # 3. Retained Earnings (RE)
+        re = _get_val(self.balance_sheet, ["Retained Earnings", "Retained Earnings Or Accumulated Deficit"])
+
+        # 4. EBIT
+        ebit = _get_val(self.income_stmt, ["EBIT", "Operating Income", "Pretax Income"])
+        if ebit is None:
+            ebit = self._safe_float(self.info.get("operatingIncome") or self.info.get("ebitda"))
+
+        # 5. Total Liabilities (TL)
+        tl = _get_val(self.balance_sheet, ["Total Liabilities Net Minority Interest", "Total Liabilities"])
+        if tl is None and not self.balance_sheet.empty:
+            cur_liab = _get_val(self.balance_sheet, ["Current Liabilities", "Total Current Liabilities Net Minority Interest", "Total Current Liabilities"]) or 0.0
+            non_cur_liab = _get_val(self.balance_sheet, ["Total Non Current Liabilities Net Minority Interest", "Total Non Current Liabilities"]) or 0.0
+            if cur_liab + non_cur_liab > 0:
+                tl = cur_liab + non_cur_liab
+        if tl is None:
+            tot_debt = self._safe_float(self.info.get("totalDebt"))
+            if tot_debt:
+                tl = tot_debt * 1.3  # Conservatively estimate total liabilities from debt
+
+        # 6. Market Value of Equity (Market Cap)
         mcap = self._safe_float(self.data.get("market_cap") or self.info.get("marketCap"))
-        tot_debt = self._safe_float(self.info.get("totalDebt"))
-        raw_de = self.info.get("debtToEquity")
-        de = self._normalize_pct(raw_de) if raw_de is not None else None
+        if not mcap and self.data.get("current_price") and self.info.get("sharesOutstanding"):
+            mcap = float(self.data["current_price"]) * float(self.info["sharesOutstanding"])
 
-        if de is not None:
-            if de < 0.3:
-                z = 4.2  # Bulletproof balance sheet
-            elif de < 0.7:
-                z = 3.2  # Solid safe zone
-            elif de < 1.3:
-                z = 2.4  # Moderate grey zone
-            else:
-                z = 1.4  # Distress risk zone
+        # 7. Sales (Total Revenue)
+        sales = _get_val(self.income_stmt, ["Total Revenue", "Operating Revenue"])
+        if sales is None:
+            sales = self._safe_float(self.info.get("totalRevenue"))
+
+        # Compute Ratios with robust fallbacks
+        # X1 = Working Capital / Total Assets
+        if wc is not None and ta is not None and ta > 0:
+            x1 = wc / ta
         else:
-            z = 3.0
+            cr = self._safe_float(self.info.get("currentRatio"))
+            if cr is not None:
+                x1 = max(-0.5, min(0.5, (cr - 1.0) / max(0.1, cr) * 0.35))
+            else:
+                x1 = 0.15
 
-        if z >= 2.99:
+        # X2 = Retained Earnings / Total Assets
+        if re is not None and ta is not None and ta > 0:
+            x2 = re / ta
+        else:
+            roe = self._normalize_pct(self.info.get("returnOnEquity"))
+            if roe is not None:
+                x2 = max(-0.5, min(0.6, roe * 1.5))
+            else:
+                x2 = 0.20
+
+        # X3 = EBIT / Total Assets
+        if ebit is not None and ta is not None and ta > 0:
+            x3 = ebit / ta
+        else:
+            roa = self._normalize_pct(self.info.get("returnOnAssets"))
+            op_margin = self._normalize_pct(self.info.get("operatingMargins"))
+            if roa is not None:
+                x3 = roa * 1.25
+            elif op_margin is not None:
+                x3 = op_margin * 0.8
+            else:
+                x3 = 0.10
+
+        # X4 = Market Value of Equity / Total Liabilities
+        if mcap is not None and tl is not None and tl > 0:
+            x4 = min(15.0, mcap / tl)
+        else:
+            de = self._normalize_de(self.info.get("debtToEquity"))
+            if de is not None:
+                x4 = min(15.0, 1.0 / max(0.05, de))
+            else:
+                x4 = 1.5
+
+        # X5 = Sales / Total Assets
+        if sales is not None and ta is not None and ta > 0:
+            x5 = sales / ta
+        else:
+            x5 = 1.0  # Normalized corporate asset turnover benchmark
+
+        # Authentic Altman Z-Score formula
+        z = 1.2 * x1 + 1.4 * x2 + 3.3 * x3 + 0.6 * x4 + 0.99 * x5
+        z = float(round(z, 2))
+
+        if z > 2.99:
             status = "Safe Zone (Low Bankruptcy Risk)"
         elif z >= 1.81:
             status = "Grey Zone (Moderate Financial Health)"
         else:
             status = "Distress Zone (High Insolvent Risk)"
 
-        return round(z, 2), status
+        return z, status
 
     # ==================== DOWNSIDE SHIELD / HARD RED FLAGS ====================
     def _detect_red_flags(self, p1: Dict, p2: Dict, p3: Dict, p4: Dict, p5: Dict, p6: Dict, z_score: Optional[float]) -> List[str]:
@@ -526,7 +758,7 @@ class PillarEvaluator:
             if p3.get("fcf_positive") is False and p3["score"] < 30:
                 flags.append("CASH DRAIN: Negative Operating/Free Cash Flow - unsustainable cash burn.")
 
-        rev_g = p1.get("revenue_growth")
+        rev_g = p2.get("latest_growth") if p2.get("latest_growth") is not None else p1.get("revenue_growth")
         if rev_g is not None and rev_g < -10.0:
             flags.append(f"REVENUE COLLAPSE: Topline shrank by {abs(rev_g):.1f}% YoY.")
 
@@ -534,7 +766,7 @@ class PillarEvaluator:
         if roe is not None and roe < 0.0:
             flags.append(f"VALUE DESTROYER: Negative Return on Equity ({roe:.1f}%).")
 
-        if z_score is not None and z_score < 1.8 and not self.is_financial:
+        if z_score is not None and z_score < 1.81 and not self.is_financial:
             flags.append(f"ALTMAN DISTRESS WARNING: Insolvent risk territory (Z-Score: {z_score:.2f}).")
 
         return flags
