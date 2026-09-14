@@ -22,7 +22,7 @@ except Exception:
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 class StockDataFetcher:
     """
@@ -39,7 +39,7 @@ class StockDataFetcher:
         if not symbols:
             return {}
         try:
-            df = yf.download(symbols, period=period, progress=False, threads=True)
+            df = yf.download(symbols, period=period, progress=False, threads=False)
             if df.empty:
                 return {}
 
