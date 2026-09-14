@@ -222,7 +222,8 @@ US_TICKER_SYMBOLS = {
 } | {
     "SPY", "QQQ", "DIA", "IWM", "AMD", "INTC", "NFLX", "QCOM", "TXN", "ADBE",
     "CRM", "ORCL", "CSCO", "IBM", "UBER", "PYPL", "ABNB", "COIN", "PLTR", "SNOW",
-    "BRK.A", "BRK.B", "JNJ", "JPM", "PG", "XOM", "CVX", "HD", "BAC", "WMT", "KO", "PEP"
+    "BRK.A", "BRK.B", "BRK-A", "BRK-B", "BF-A", "BF-B",
+    "JNJ", "JPM", "PG", "XOM", "CVX", "HD", "BAC", "WMT", "KO", "PEP"
 }
 
 # ==================== 5. ALL INDIA UNIFIED NSE & BSE UNIVERSE ====================
@@ -243,6 +244,11 @@ def format_ticker(symbol: str, market: str = "AUTO") -> str:
     e.g. 'RELIANCE' -> 'RELIANCE.NS', '500325' -> '500325.BO', 'AAPL' -> 'AAPL'.
     """
     clean_sym = symbol.strip().upper()
+
+    # Index caret preservation (e.g. ^NSEI, ^BSESN, ^GSPC, ^DJI)
+    if clean_sym.startswith("^"):
+        return clean_sym[:-3] if clean_sym.endswith((".NS", ".BO")) else clean_sym
+
     if clean_sym.endswith(".NS") or clean_sym.endswith(".BO"):
         return clean_sym
     
@@ -250,9 +256,14 @@ def format_ticker(symbol: str, market: str = "AUTO") -> str:
     if clean_sym.isdigit():
         return f"{clean_sym}.BO"
 
+    # Normalize US dual-class shares with dot notation to hyphen (e.g. BRK.A -> BRK-A)
+    if clean_sym in {"BRK.A", "BRK.B"}:
+        clean_sym = clean_sym.replace(".", "-")
+
     # Known US tickers or explicit US market
     if market == "US" or clean_sym in US_TICKER_SYMBOLS:
         return clean_sym
         
     return f"{clean_sym}.NS"
+
 

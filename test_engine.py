@@ -17,6 +17,14 @@ class TestPillarEngine(unittest.TestCase):
         self.assertEqual(format_ticker("AAPL"), "AAPL")
         self.assertEqual(format_ticker("NVDA"), "NVDA")
         self.assertEqual(format_ticker("500325"), "500325.BO")
+        # Index carets and US dual-class tickers
+        self.assertEqual(format_ticker("^NSEI"), "^NSEI")
+        self.assertEqual(format_ticker("^BSESN"), "^BSESN")
+        self.assertEqual(format_ticker("^GSPC"), "^GSPC")
+        self.assertEqual(format_ticker("^NSEI.NS"), "^NSEI")
+        self.assertEqual(format_ticker("BRK-A"), "BRK-A")
+        self.assertEqual(format_ticker("BRK-B"), "BRK-B")
+        self.assertEqual(format_ticker("BRK.A"), "BRK-A")
 
     def test_universe_aliases(self):
         from core.universe import INDIAN_QUALITY_GROWTH, GLOBAL_US_MEGA_TECH
@@ -222,6 +230,59 @@ class TestPillarEngine(unittest.TestCase):
         self.assertEqual(plan["total_investment"], 0.0)
         self.assertIsNotNone(plan["sizing_alert"])
         self.assertIn("Capital Overrun Guard", plan["sizing_alert"])
+
+    def test_altman_z_score_negative_equity_distress(self):
+        """Insolvent company with negative equity must be in Distress Zone, not Safe Zone."""
+        mock_insolvent = {
+            "symbol": "BANKRUPT.NS",
+            "info": {
+                "debtToEquity": -5.0,
+                "currentRatio": 0.5,
+                "returnOnEquity": -0.8,
+                "returnOnAssets": -0.4,
+                "operatingMargins": -0.5
+            }
+        }
+        ev = PillarEvaluator(mock_insolvent)
+        z, status = ev._calc_altman_z_score()
+        self.assertLess(z, 1.81)
+        self.assertIn("Distress Zone", status)
+        
+        res = ev.evaluate_all()
+        self.assertFalse(res["is_recommended"])
+        self.assertIn("AVOID", res["signal"])
+
+    def test_risk_manager_penny_stock_bounds(self):
+        """Sub-₹0.10 penny stocks must have stop loss strictly below entry price."""
+        dates = pd.date_range(end=pd.Timestamp.now(), periods=50)
+        hist = pd.DataFrame({
+            "Open": np.full(50, 0.05),
+            "High": np.full(50, 0.06),
+            "Low": np.full(50, 0.04),
+            "Close": np.full(50, 0.05),
+            "Volume": np.full(50, 100000)
+        }, index=dates)
+        plan = RiskManager.calculate_trade_plan(
+            stock_price=0.05,
+            history=hist,
+            total_portfolio_size=100000.0,
+            risk_per_trade_pct=1.5,
+            max_position_size_pct=12.0
+        )
+        self.assertLess(plan["stop_loss"], plan["current_price"])
+        self.assertGreater(plan["target_1"], plan["current_price"])
+        self.assertGreaterEqual(plan["max_risk_capital"], 0.0)
+
+    def test_risk_manager_zero_price_guard(self):
+        """Zero price input must not raise ZeroDivisionError."""
+        plan = RiskManager.calculate_trade_plan(
+            stock_price=0.0,
+            history=pd.DataFrame(),
+            total_portfolio_size=100000.0
+        )
+        self.assertEqual(plan["recommended_shares"], 0)
+        self.assertEqual(plan["total_investment"], 0.0)
+        self.assertIsNotNone(plan["sizing_alert"])
 
 if __name__ == "__main__":
     unittest.main()

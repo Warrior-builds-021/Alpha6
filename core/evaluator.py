@@ -353,6 +353,15 @@ class PillarEvaluator:
                         equity = float(s.iloc[0])
             if tot_debt is not None and equity and equity > 0:
                 debt_to_equity = tot_debt / equity
+            elif tot_debt is not None and equity and equity < 0:
+                debt_to_equity = tot_debt / equity
+            elif equity is not None and equity < 0:
+                debt_to_equity = -1.0
+
+        if debt_to_equity is None:
+            bv = self._safe_float(self.info.get("bookValue"))
+            if bv is not None and bv < 0:
+                debt_to_equity = -1.0
 
         if current_ratio is None and not self.balance_sheet.empty:
             ca = None
@@ -382,7 +391,10 @@ class PillarEvaluator:
             }
 
         if debt_to_equity is not None:
-            if debt_to_equity <= 0.20:
+            if debt_to_equity < 0:
+                score -= 40
+                details.append(f"CRITICAL SOLVENCY RISK: Negative Equity / Balance Sheet Insolvency (D/E = {debt_to_equity:.2f}x).")
+            elif debt_to_equity <= 0.20:
                 score += 35
                 details.append(f"Fortress Balance Sheet: Virtually zero debt (D/E = {debt_to_equity:.2f}x).")
             elif debt_to_equity <= 0.60:
@@ -546,7 +558,7 @@ class PillarEvaluator:
             score += 1
             details.append("Operating Cash Flow > Net Income (+1)")
 
-        # 5. Low/Decreasing Leverage (D/E < 0.5x)
+        # 5. Low/Decreasing Leverage (0.0 <= D/E < 0.5x)
         raw_de = self.info.get("debtToEquity")
         de = self._normalize_de(raw_de) if raw_de is not None else None
         if de is None and not self.balance_sheet.empty:
@@ -554,7 +566,9 @@ class PillarEvaluator:
             equity = _get_val(self.balance_sheet, ["Common Stock Equity", "Stockholders Equity", "Total Equity Gross Minority Interest"])
             if tot_debt is not None and equity and equity > 0:
                 de = tot_debt / equity
-        if de is not None and de < 0.5:
+            elif equity is not None and equity < 0:
+                de = -1.0
+        if de is not None and 0.0 <= de < 0.5:
             score += 1
             details.append(f"Conservative Debt-to-Equity ({de:.2f}x < 0.5x) (+1)")
 
@@ -717,15 +731,28 @@ class PillarEvaluator:
             else:
                 x3 = 0.10
 
+        # Balance sheet insolvency / negative equity detection
+        raw_de = self.info.get("debtToEquity")
+        de = self._normalize_de(raw_de) if raw_de is not None else None
+        bv = self._safe_float(self.info.get("bookValue"))
+        equity = _get_val(self.balance_sheet, ["Common Stock Equity", "Stockholders Equity", "Total Equity Gross Minority Interest", "Total Stockholder Equity"])
+        
+        is_negative_equity = (
+            (de is not None and de < 0)
+            or (bv is not None and bv < 0)
+            or (equity is not None and equity < 0)
+            or (ta is not None and tl is not None and ta > 0 and tl > ta)
+        )
+
         # X4 = Market Value of Equity / Total Liabilities
-        if mcap is not None and tl is not None and tl > 0:
+        if is_negative_equity:
+            x4 = 0.0
+        elif mcap is not None and tl is not None and tl > 0:
             x4 = min(15.0, mcap / tl)
+        elif de is not None:
+            x4 = min(15.0, 1.0 / max(0.05, de))
         else:
-            de = self._normalize_de(self.info.get("debtToEquity"))
-            if de is not None:
-                x4 = min(15.0, 1.0 / max(0.05, de))
-            else:
-                x4 = 1.5
+            x4 = 1.5
 
         # X5 = Sales / Total Assets
         if sales is not None and ta is not None and ta > 0:
@@ -736,6 +763,9 @@ class PillarEvaluator:
         # Authentic Altman Z-Score formula
         z = 1.2 * x1 + 1.4 * x2 + 3.3 * x3 + 0.6 * x4 + 0.99 * x5
         z = float(round(z, 2))
+
+        if is_negative_equity and z >= 1.81:
+            z = 1.80  # Cap at Distress Zone boundary for balance sheet insolvent firms
 
         if z > 2.99:
             status = "Safe Zone (Low Bankruptcy Risk)"
@@ -751,8 +781,11 @@ class PillarEvaluator:
         flags = []
 
         de = p4.get("debt_to_equity")
-        if de is not None and de > 2.0 and not self.is_financial:
-            flags.append(f"CRITICAL SOLVENCY RISK: High Debt-to-Equity ratio of {de:.2f}x.")
+        if de is not None and not self.is_financial:
+            if de < 0:
+                flags.append(f"BALANCE SHEET INSOLVENCY: Negative Net Worth / Insolvent Equity (D/E = {de:.2f}x).")
+            elif de > 2.0:
+                flags.append(f"CRITICAL SOLVENCY RISK: High Debt-to-Equity ratio of {de:.2f}x.")
 
         if not self.is_financial:
             if p3.get("fcf_positive") is False and p3["score"] < 30:

@@ -126,21 +126,27 @@ class TestTickerFormattingStress(unittest.TestCase):
         self.assertEqual(format_ticker("FOOBAR", market="US"), "FOOBAR")
         self.assertEqual(format_ticker("BRK-A", market="US"), "BRK-A")
 
-    def test_special_symbols_investigation(self):
+    def test_special_symbols_and_indices_regression(self):
         """
-        Adversarial edge cases:
+        REGRESSION TEST:
         1. Index symbols starting with '^' (e.g. ^NSEI, ^BSESN, ^GSPC).
            In Yahoo Finance, indices begin with '^' and DO NOT use .NS or .BO.
         2. Dual-share US class tickers like BRK-A, BRK-B vs BRK.A, BRK.B.
+        3. Spurious suffixes accidentally appended to indices must be cleanly stripped.
         """
-        # Let's inspect the behavior of format_ticker on these edge cases
-        index_nsei = format_ticker("^NSEI")
-        index_bsesn = format_ticker("^BSESN")
-        brk_a = format_ticker("BRK-A")
+        self.assertEqual(format_ticker("^NSEI"), "^NSEI")
+        self.assertEqual(format_ticker("^BSESN"), "^BSESN")
+        self.assertEqual(format_ticker("^GSPC"), "^GSPC")
+        self.assertEqual(format_ticker("^DJI"), "^DJI")
+        self.assertEqual(format_ticker("^IXIC"), "^IXIC")
+        self.assertEqual(format_ticker("  ^nsei  "), "^NSEI")
+        self.assertEqual(format_ticker("^NSEI.NS"), "^NSEI")
+        self.assertEqual(format_ticker("^BSESN.BO"), "^BSESN")
         
-        print(f"DEBUG: format_ticker('^NSEI') = {index_nsei}")
-        print(f"DEBUG: format_ticker('^BSESN') = {index_bsesn}")
-        print(f"DEBUG: format_ticker('BRK-A') = {brk_a}")
+        self.assertEqual(format_ticker("BRK-A"), "BRK-A")
+        self.assertEqual(format_ticker("BRK-B"), "BRK-B")
+        self.assertEqual(format_ticker("BRK.A"), "BRK-A")
+        self.assertEqual(format_ticker("BRK.B"), "BRK-B")
 
 
 class TestServerlessCacheSafety(unittest.TestCase):

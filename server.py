@@ -27,6 +27,8 @@ except Exception:
 
 import numpy as np
 import pandas as pd
+from datetime import datetime
+import json
 from typing import Optional, List
 
 from core.data_fetcher import StockDataFetcher
@@ -86,6 +88,26 @@ async def serve_static_js():
             return HTMLResponse(content=f.read(), media_type="application/javascript")
     return HTMLResponse(content="// script not found", status_code=404)
 
+@app.get("/manifest.json")
+@app.get("/static/manifest.json")
+async def serve_manifest():
+    """Serves PWA Web App Manifest."""
+    manifest_path = os.path.join(STATIC_DIR, "manifest.json")
+    if os.path.exists(manifest_path):
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            return JSONResponse(content=json.loads(f.read()))
+    return JSONResponse(status_code=404, content={"error": "manifest.json not found"})
+
+@app.get("/sw.js")
+@app.get("/static/sw.js")
+async def serve_sw():
+    """Serves PWA Service Worker."""
+    sw_path = os.path.join(STATIC_DIR, "sw.js")
+    if os.path.exists(sw_path):
+        with open(sw_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read(), media_type="application/javascript")
+    return HTMLResponse(content="// sw not found", status_code=404)
+
 @app.get("/api/health")
 async def health():
     return {"status": "ONLINE", "version": "2.0.0", "threshold": config.CONVICTION_THRESHOLD}
@@ -119,6 +141,93 @@ import time
 import threading
 
 _SCREEN_CACHE = {}
+_INDEX_CACHE = {"timestamp": 0.0, "data": None}
+
+def _fetch_market_indices_sync() -> dict:
+    """Synchronous fetcher for BSE Sensex and Nifty 50 with 60s cache and graceful fallback."""
+    now_iso = datetime.utcnow().isoformat() + "Z"
+    fallback_indices = [
+        {
+            "symbol": "^BSESN",
+            "name": "BSE SENSEX",
+            "price": 82890.94,
+            "change": 234.50,
+            "percent_change": 0.28
+        },
+        {
+            "symbol": "^NSEI",
+            "name": "NIFTY 50",
+            "price": 25356.50,
+            "change": 89.20,
+            "percent_change": 0.35
+        }
+    ]
+    try:
+        df = yf.download(["^BSESN", "^NSEI"], period="5d", interval="1d", progress=False, threads=True)
+        if df.empty:
+            return {"status": "OK", "timestamp": now_iso, "indices": fallback_indices}
+
+        is_multi = isinstance(df.columns, pd.MultiIndex)
+        idx_configs = [
+            ("^BSESN", "BSE SENSEX", 82890.94, 234.50, 0.28),
+            ("^NSEI", "NIFTY 50", 25356.50, 89.20, 0.35)
+        ]
+        indices_res = []
+        for sym, name, def_price, def_change, def_pct in idx_configs:
+            try:
+                if is_multi:
+                    closes = df['Close'][sym].dropna() if sym in df['Close'] else pd.Series()
+                else:
+                    closes = df['Close'].dropna()
+                
+                if len(closes) >= 2:
+                    curr_p = round(float(closes.iloc[-1]), 2)
+                    prev_p = round(float(closes.iloc[-2]), 2)
+                    change = round(curr_p - prev_p, 2)
+                    pct_change = round((change / prev_p) * 100, 2) if prev_p > 0 else 0.0
+                elif len(closes) == 1:
+                    curr_p = round(float(closes.iloc[-1]), 2)
+                    change = 0.0
+                    pct_change = 0.0
+                else:
+                    curr_p = def_price
+                    change = def_change
+                    pct_change = def_pct
+                
+                indices_res.append({
+                    "symbol": sym,
+                    "name": name,
+                    "price": curr_p,
+                    "change": change,
+                    "percent_change": pct_change
+                })
+            except Exception:
+                indices_res.append({
+                    "symbol": sym,
+                    "name": name,
+                    "price": def_price,
+                    "change": def_change,
+                    "percent_change": def_pct
+                })
+        return {"status": "OK", "timestamp": now_iso, "indices": indices_res}
+    except Exception as e:
+        print(f"Error fetching market indices: {e}")
+        return {"status": "OK", "timestamp": now_iso, "indices": fallback_indices}
+
+@app.get("/api/market-indices")
+async def get_market_indices():
+    """
+    Returns live BSE Sensex and Nifty 50 index points, daily change, and % change.
+    Protected by a 60-second in-memory TTL cache with graceful fallback.
+    """
+    now = time.time()
+    if _INDEX_CACHE["data"] is not None and (now - _INDEX_CACHE["timestamp"]) < 60.0:
+        return _INDEX_CACHE["data"]
+
+    data = _fetch_market_indices_sync()
+    _INDEX_CACHE["timestamp"] = now
+    _INDEX_CACHE["data"] = data
+    return data
 
 def _audit_single_stock(item: dict, batch_data: dict, threshold: float = 78.0) -> Optional[dict]:
     """Helper function executed in high-speed thread pool using batch market data."""
@@ -226,10 +335,13 @@ def _execute_screen_sync(universe: str, custom_symbols: Optional[str] = None, th
 
 @app.on_event("startup")
 def prewarm_screener_cache():
-    """Background pre-warming of Nifty 50 screener so first visitor gets 5ms instant response."""
+    """Background pre-warming of Nifty 50 screener and market indices so first visitor gets 5ms instant response."""
     def _worker():
         try:
-            print("Pre-warming Nifty 50 screener cache in background...")
+            print("Pre-warming Nifty 50 screener and market indices cache in background...")
+            idx_payload = _fetch_market_indices_sync()
+            _INDEX_CACHE["timestamp"] = time.time()
+            _INDEX_CACHE["data"] = idx_payload
             payload = _execute_screen_sync("nifty50", threshold=78.0)
             _SCREEN_CACHE["nifty50_None_78.0"] = (time.time(), payload)
             print(f"Screener cache pre-warmed: {payload['total_scanned']} securities loaded.")

@@ -4,10 +4,16 @@ Tests Altman Z-Score, Piotroski F-Score, ATR Position Sizing, and Sales/OCF Scor
 Empirically reproduces and verifies mathematical boundaries, edge cases, and failure modes.
 """
 
+import os
+import sys
 import unittest
 import numpy as np
 import pandas as pd
 from typing import Dict, Any
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 from core.evaluator import PillarEvaluator
 from core.risk_manager import RiskManager
@@ -69,13 +75,14 @@ class TestChallengerAltmanZScore(unittest.TestCase):
         self.assertEqual(z, 3.5)
         self.assertIn("Financial Institution", status)
 
-    def test_reproduce_negative_equity_altman_distortion(self):
+    def test_negative_equity_altman_and_piotroski_remediation(self):
         """
-        EMPERICAL DEFECT REPRODUCTION:
-        When a firm has negative equity (insolvent) and reports negative debtToEquity,
-        evaluator._calc_altman_z_score calculates x4 = 15.0 (maximum possible)
-        due to max(0.05, de) treating negative D/E as lower than 0.05.
-        This inflates Z by +9.0 points, classifying an insolvent company as 'Safe Zone'.
+        VERIFIES REMEDIATION OF NEGATIVE EQUITY DEFECT:
+        When a firm has negative equity (insolvent) and reports negative debtToEquity:
+        1. Altman Z-Score penalizes X4 to 0.0 and classifies as Distress Zone (Z < 1.81).
+        2. Piotroski F-Score does NOT award +1 for Criterion 5 (D/E < 0.5).
+        3. Pillar 4 penalizes negative D/E (-40 pts) and logs balance sheet insolvency.
+        4. Red flags contain both balance sheet insolvency and Altman distress.
         """
         stock_insolvent = {
             "symbol": "BANKRUPT.NS",
@@ -89,11 +96,23 @@ class TestChallengerAltmanZScore(unittest.TestCase):
         }
         ev = PillarEvaluator(stock_insolvent)
         z, status = ev._calc_altman_z_score()
-        # Empirically verify the bug exists:
-        # Expected correct behavior: z < 1.81 (Distress Zone)
-        # Actual buggy behavior: z = 7.22 (Safe Zone)
-        self.assertEqual(z, 7.22, "Bug signature: negative D/E yields distorted Z=7.22")
-        self.assertEqual(status, "Safe Zone (Low Bankruptcy Risk)", "Bug signature: classified as Safe Zone")
+        self.assertLess(z, 1.81, f"Altman Z {z} must be in Distress Zone (< 1.81)")
+        self.assertEqual(z, -1.78, f"Expected Z = -1.78, got {z}")
+        self.assertEqual(status, "Distress Zone (High Insolvent Risk)")
+
+        f_score, f_details = ev._calc_piotroski_f_score()
+        self.assertEqual(f_score, 0, f"Insolvent firm must not receive Piotroski points, got {f_score}")
+        self.assertFalse(any("Conservative Debt-to-Equity" in d for d in f_details))
+
+        p4 = ev._eval_debt_solvency()
+        self.assertEqual(p4["score"], 0.0, f"Pillar 4 score must be 0.0, got {p4['score']}")
+        self.assertTrue(any("Negative Equity" in d for d in p4["details"]))
+
+        res = ev.evaluate_all()
+        self.assertFalse(res["is_recommended"])
+        self.assertEqual(res["signal"], "AVOID (RED FLAGS DETECTED)")
+        self.assertTrue(any("BALANCE SHEET INSOLVENCY" in f for f in res["red_flags"]))
+        self.assertTrue(any("ALTMAN DISTRESS WARNING" in f for f in res["red_flags"]))
 
 
 class TestChallengerPiotroskiFScore(unittest.TestCase):
@@ -233,12 +252,11 @@ class TestChallengerATRSizingLimits(unittest.TestCase):
         self.assertEqual(plan["total_investment"], 0.0)
         self.assertEqual(plan["portfolio_weight_pct"], 0.0)
 
-    def test_reproduce_penny_stock_stop_loss_inversion(self):
+    def test_penny_stock_stop_loss_flooring_validity(self):
         """
-        EMPERICAL DEFECT REPRODUCTION:
-        In core/risk_manager.py:49, stop_loss = round(max(0.1, stock_price - atr_buffer), 2).
-        For stocks with price < 0.10, the stop loss is floored at 0.10, which is GREATER
-        than the entry price. This creates an inverted trade plan (stop loss > price, target1 < stop loss).
+        Positive verification: For penny stocks trading below ₹0.10 (e.g. ₹0.05),
+        stop loss is strictly below entry price, targets are above entry price,
+        and max risk capital is non-negative.
         """
         dates = pd.date_range(end=pd.Timestamp.now(), periods=50)
         hist_penny = pd.DataFrame({
@@ -256,25 +274,33 @@ class TestChallengerATRSizingLimits(unittest.TestCase):
             risk_per_trade_pct=1.5,
             max_position_size_pct=12.0
         )
-        # Verify the defect is present:
-        self.assertEqual(plan["stop_loss"], 0.1)
-        self.assertGreater(plan["stop_loss"], plan["current_price"])
-        self.assertEqual(plan["stop_loss_pct"], 100.0)
-        self.assertLess(plan["target_1"], plan["stop_loss"])
-        self.assertLess(plan["max_risk_capital"], 0.0)
+        self.assertLess(plan["stop_loss"], plan["current_price"])
+        self.assertGreater(plan["stop_loss"], 0.0)
+        self.assertLess(plan["stop_loss_pct"], 0.0)
+        self.assertGreater(plan["target_1"], plan["current_price"])
+        self.assertGreater(plan["target_2"], plan["target_1"])
+        self.assertGreaterEqual(plan["max_risk_capital"], 0.0)
+        self.assertGreater(plan["recommended_shares"], 0)
 
-    def test_reproduce_zero_price_division_by_zero_crash(self):
+    def test_zero_or_negative_price_graceful_handling(self):
         """
-        EMPERICAL DEFECT REPRODUCTION:
-        RiskManager.calculate_trade_plan() crashes with ZeroDivisionError when stock_price == 0.0
-        at line 88 ("stop_loss_pct": round(((stop_loss - stock_price) / stock_price) * 100, 2)).
+        Positive verification: calculate_trade_plan() gracefully handles stock_price <= 0.0
+        by returning a zeroed plan with an alert rather than crashing with ZeroDivisionError.
         """
-        with self.assertRaises(ZeroDivisionError):
-            RiskManager.calculate_trade_plan(
-                stock_price=0.0,
+        for bad_price in [0.0, -5.0]:
+            plan = RiskManager.calculate_trade_plan(
+                stock_price=bad_price,
                 history=pd.DataFrame(),
                 total_portfolio_size=100000.0
             )
+            self.assertEqual(plan["recommended_shares"], 0)
+            self.assertEqual(plan["stop_loss"], 0.0)
+            self.assertEqual(plan["stop_loss_pct"], 0.0)
+            self.assertEqual(plan["total_investment"], 0.0)
+            self.assertEqual(plan["portfolio_weight_pct"], 0.0)
+            self.assertEqual(plan["max_risk_capital"], 0.0)
+            self.assertIsNotNone(plan["sizing_alert"])
+            self.assertIn("Invalid Price Guard", plan["sizing_alert"])
 
 
 class TestChallengerSalesAndOCFScoring(unittest.TestCase):

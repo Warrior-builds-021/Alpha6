@@ -42,7 +42,7 @@ ALPHA6 is an institutional-grade quantitative equity analysis, screening, and ex
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
 | E2E | E2E Testing Track | Design 10-suite regression verification test runner & test cases (Tiers 1-4) deriving from requirements; publish TEST_READY.md | none | IN_PROGRESS |
-| M1 | Backend & Quantitative Engine | Fix universe imports, 6-pillar scoring, authentic Altman Z-score, Piotroski fallback, ATR position cap guard, `/tmp` cache redirection | none | IN_PROGRESS |
+| M1 | Backend & Quantitative Engine | Fix universe imports, 6-pillar scoring, authentic Altman Z-score, Piotroski fallback, ATR position cap guard, `/tmp` cache redirection | none | DONE |
 | M2 | Market Indices & Search Backend/Catalog | Add `/api/market-indices`, expand `LOCAL_CATALOG` to 150+ stocks, ARIA & keyboard navigation | M1 | PLANNED |
 | M3 | Investo.in UI/UX & Terminal Transformation | Obsidian styling, purple/indigo/magenta gradients, glassmorphism, live index ribbon, valuation card, Plotly resize fix, PWA, script deferral, dual-runtime parity | M2 | PLANNED |
 | M4 | Final E2E Test Suite Pass | Run and pass 100% of the E2E test suite (Tiers 1-4) across all endpoints and UI components | M3, E2E | PLANNED |

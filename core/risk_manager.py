@@ -24,15 +24,48 @@ class RiskManager:
         """
         Computes dynamic ATR stop-loss, profit targets, and position sizing.
         """
+        # Guard against zero or negative stock price
+        if stock_price <= 0:
+            return {
+                "current_price": stock_price,
+                "atr_14": 0.0,
+                "stop_loss": 0.0,
+                "stop_loss_pct": 0.0,
+                "target_1": 0.0,
+                "target_1_upside_pct": 0.0,
+                "target_2": 0.0,
+                "target_2_upside_pct": 0.0,
+                "risk_reward_ratio": "N/A",
+                "recommended_shares": 0,
+                "total_investment": 0.0,
+                "portfolio_weight_pct": 0.0,
+                "max_risk_capital": 0.0,
+                "potential_gain_t1": 0.0,
+                "potential_gain_t2": 0.0,
+                "sizing_alert": (
+                    f"Invalid Price Guard: Unit share price ({stock_price}) must be positive (> 0) "
+                    f"to calculate trade plan."
+                ),
+                "capital_preservation_rule": "Strict 2x ATR Trailing Stop Loss. Never risk more than 1.5% of total portfolio on any single trade."
+            }
+
         clean_hist = history.dropna(subset=['High', 'Low', 'Close']) if not history.empty else pd.DataFrame()
-        
-        if clean_hist.empty or len(clean_hist) < 14 or stock_price <= 0:
+        prec = 4 if stock_price < 1.0 else 2
+        min_risk = 10 ** (-prec)
+
+        if clean_hist.empty or len(clean_hist) < 14:
             # Fallback static percentage
-            stop_loss = round(stock_price * 0.92, 2)  # 8% stop loss
-            target_1 = round(stock_price * 1.16, 2)   # 1:2 R:R (16%)
-            target_2 = round(stock_price * 1.25, 2)   # 1:3+ R:R (25%)
-            risk_per_share = max(0.01, stock_price - stop_loss)
-            atr_val = stock_price * 0.04
+            stop_loss = round(stock_price * 0.92, prec)  # 8% stop loss
+            if stop_loss >= stock_price:
+                stop_loss = round(stock_price * 0.90, prec)
+            target_1 = round(stock_price * 1.16, prec)   # 1:2 R:R (16%)
+            target_2 = round(stock_price * 1.25, prec)   # 1:3+ R:R (25%)
+            if target_1 <= stock_price:
+                target_1 = round(stock_price * 1.10, prec)
+            if target_2 <= target_1:
+                target_2 = round(target_1 * 1.05, prec)
+            risk_per_share = max(min_risk, stock_price - stop_loss)
+            atr_val = round(stock_price * 0.04, prec)
         else:
             # Calculate Average True Range (14-period ATR)
             high_low = clean_hist['High'] - clean_hist['Low']
@@ -44,14 +77,21 @@ class RiskManager:
             rolling_atr = true_range.rolling(14).mean().dropna()
             atr_val = float(rolling_atr.iloc[-1]) if not rolling_atr.empty and not np.isnan(rolling_atr.iloc[-1]) else stock_price * 0.04
             
-            # Dynamic Stop Loss: 2.0x ATR below current price (bounded to sensible minimum 5-10% buffer)
+            # Dynamic Stop Loss: 2.0x ATR below current price (bounded to sensible minimum 3-15% buffer)
             atr_buffer = min(stock_price * 0.15, max(stock_price * 0.03, 2.0 * atr_val))
-            stop_loss = round(max(0.1, stock_price - atr_buffer), 2)
-            risk_per_share = max(0.01, stock_price - stop_loss)
+            # Relative floor ensures stop loss is strictly below entry price and positive
+            stop_loss = round(max(stock_price * 0.50, stock_price - atr_buffer), prec)
+            if stop_loss >= stock_price:
+                stop_loss = round(stock_price * 0.92, prec)
+            risk_per_share = max(min_risk, stock_price - stop_loss)
             
             # Asymmetric Risk-Reward: Target 1 (2x Risk), Target 2 (3.5x Risk)
-            target_1 = round(stock_price + (2.0 * risk_per_share), 2)
-            target_2 = round(stock_price + (3.5 * risk_per_share), 2)
+            target_1 = round(stock_price + (2.0 * risk_per_share), prec)
+            target_2 = round(stock_price + (3.5 * risk_per_share), prec)
+            if target_1 <= stock_price:
+                target_1 = round(stock_price + (2.0 * min_risk), prec)
+            if target_2 <= target_1:
+                target_2 = round(target_1 + min_risk, prec)
 
         # Money Management & Position Sizing
         max_capital_to_risk = total_portfolio_size * (risk_per_trade_pct / 100.0)
@@ -83,7 +123,7 @@ class RiskManager:
 
         return {
             "current_price": stock_price,
-            "atr_14": round(atr_val, 2),
+            "atr_14": round(atr_val, prec),
             "stop_loss": stop_loss,
             "stop_loss_pct": round(((stop_loss - stock_price) / stock_price) * 100, 2),
             "target_1": target_1,
