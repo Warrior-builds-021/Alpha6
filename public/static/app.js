@@ -201,7 +201,12 @@ async function runScreener() {
         renderScreenerTable();
 
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-rose-400 font-mono">Error running screen: ${e.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-rose-400 font-mono">
+            <div class="flex flex-col items-center justify-center gap-2">
+                <span>Error running screen: ${e.message}</span>
+                <button onclick="runScreener()" class="mt-2 px-4 py-1.5 text-xs bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 rounded-lg transition font-mono">↻ Retry Screen</button>
+            </div>
+        </td></tr>`;
     } finally {
         btn.disabled = false;
         btn.innerHTML = `<span>Execute Screen</span>`;
